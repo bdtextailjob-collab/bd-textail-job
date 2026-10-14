@@ -1,0 +1,194 @@
+/* ========================================
+   BD Textail Job - Global Styles
+   ======================================== */
+
+/* ---------- CSS Variables (ব্র্যান্ডের রঙ ও ফন্ট) ---------- */
+:root {
+  --color-primary: #0a1f44;        /* গাঢ় নীল - মূল ব্র্যান্ড */
+  --color-primary-light: #16346b;  /* হালকা নীল */
+  --color-accent: #d4a537;         /* সোনালি - অ্যাকসেন্ট */
+  --color-accent-light: #e6c267;   /* হালকা সোনালি */
+  --color-bg: #f5f7fa;             /* সাইটের ব্যাকগ্রাউন্ড */
+  --color-surface: #ffffff;        /* কার্ড/বক্সের পেছন */
+  --color-text: #1a1a1a;           /* মূল লেখার রঙ */
+  --color-text-muted: #5a6472;     /* হালকা লেখা */
+  --color-border: #e2e6ee;         /* বর্ডারের রঙ */
+  --color-success: #1e9d5a;
+  --color-error: #d93636;
+
+  --font-bangla: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+  --font-english: 'Poppins', 'Segoe UI', sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+
+  --shadow-sm: 0 2px 6px rgba(10, 31, 68, 0.06);
+  --shadow-md: 0 6px 18px rgba(10, 31, 68, 0.10);
+  --shadow-lg: 0 12px 32px rgba(10, 31, 68, 0.16);
+}
+
+/* ---------- Reset ---------- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;   /* horizontal scroll বন্ধ */
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-bangla);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* ---------- Typography ---------- */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-english);
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1.3;
+}
+
+p {
+  font-family: var(--font-bangla);
+  color: var(--color-text);
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--color-accent);
+}
+
+button {
+  font-family: var(--font-bangla);
+  cursor: pointer;
+  border: none;
+  outline: none;
+  background: none;
+  transition: all 0.2s ease;
+}
+
+input, textarea, select {
+  font-family: var(--font-bangla);
+  outline: none;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ---------- Scrollbar (ডেস্কটপে সুন্দর দেখানোর জন্য) ---------- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary-light);
+}
+
+/* ---------- Text Selection ---------- */
+::selection {
+  background: var(--color-accent);
+  color: var(--color-primary);
+}
+
+/* ---------- Reusable Utility Classes ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-bangla);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-accent {
+  background: var(--color-accent);
+  color: var(--color-primary);
+}
+
+.btn-accent:hover {
+  background: var(--color-accent-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+}
+
+.btn-outline:hover {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.container {
+  width: 100%;
+  max-width: 480px;       /* মোবাইল-ফার্স্ট */
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 720px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 960px;
+  }
+}
