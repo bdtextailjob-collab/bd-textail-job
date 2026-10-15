@@ -92,7 +92,7 @@ const thanasByDistrict = {
 }
 
 // =====================================================
-// শিক্ষাগত যোগ্যতার তালিকা (ক্রম অনুযায়ী)
+// শিক্ষাগত যোগ্যতার তালিকা
 // =====================================================
 const educationLevels = [
   'PSC',
@@ -117,10 +117,9 @@ for (let year = 1980; year <= 2050; year++) {
 // মূল কম্পোনেন্ট
 // =====================================================
 function UserRegisterForm({ onClose }) {
-  // বর্তমান ধাপ (1, 2, 3, 4)
   const [currentStep, setCurrentStep] = useState(1)
 
-  // ---------- Step 1 ডেটা ----------
+  // Step 1 ডেটা
   const [formData, setFormData] = useState({
     name: '',
     fatherName: '',
@@ -131,29 +130,34 @@ function UserRegisterForm({ onClose }) {
     village: ''
   })
 
-  // ---------- Step 2 ডেটা ----------
+  // Step 2 ডেটা
   const [education, setEducation] = useState({
     level: '',
     institution: '',
     passingYear: ''
   })
+  const [certificates, setCertificates] = useState([])
 
-  // ---------- Step 2 ছবি (সর্বোচ্চ ৩টি) ----------
-  const [certificates, setCertificates] = useState([])  // { file, preview } এর array
+  // Step 3 ডেটা
+  const [contact, setContact] = useState({
+    mobile: '',
+    email: ''
+  })
+  // NID অথবা জন্মনিবন্ধন — যেকোনো একটি
+  const [idType, setIdType] = useState('')  // 'nid' বা 'birth'
+  const [idImage, setIdImage] = useState(null)  // { file, preview, name }
 
-  // থানা সার্চের জন্য
+  // থানা সার্চ
   const [thanaSearch, setThanaSearch] = useState('')
   const [showThanaDropdown, setShowThanaDropdown] = useState(false)
 
-  // এরর বার্তা
+  // Error
   const [errors, setErrors] = useState({})
 
-  // ---------- Step 1: ইনপুট পরিবর্তন ----------
+  // ---------- Step 1 হ্যান্ডলার ----------
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: '' }))
-    }
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }))
     if (field === 'division') {
       setFormData((prev) => ({ ...prev, division: value, district: '', thana: '' }))
     }
@@ -163,7 +167,6 @@ function UserRegisterForm({ onClose }) {
     }
   }
 
-  // ---------- Step 1: উপলব্ধ জেলা ও থানা ----------
   const availableDistricts = formData.division ? divisions[formData.division] || [] : []
   const availableThanas = formData.district ? thanasByDistrict[formData.district] || [] : []
 
@@ -178,58 +181,79 @@ function UserRegisterForm({ onClose }) {
     if (errors.thana) setErrors((prev) => ({ ...prev, thana: '' }))
   }
 
-  // ---------- Step 2: শিক্ষাগত যোগ্যতা ----------
+  // ---------- Step 2 হ্যান্ডলার ----------
   const handleEducationChange = (field, value) => {
     setEducation((prev) => ({ ...prev, [field]: value }))
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: '' }))
-    }
-    // যদি "শিক্ষাগত যোগ্যতা নাই" সিলেক্ট করে → ছবি সব মুছে দাও
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }))
     if (field === 'level' && value === 'শিক্ষাগত যোগ্যতা নাই') {
       setCertificates([])
     }
   }
 
-  // ---------- Step 2: ছবি আপলোড ----------
   const handleAddCertificate = (file) => {
     if (!file) return
-
-    // ফাইল টাইপ যাচাই
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']
     if (!allowedTypes.includes(file.type)) {
       alert('শুধু JPG, PNG অথবা PDF ফাইল আপলোড করতে পারবেন।')
       return
     }
-
-    // ফাইল সাইজ যাচাই (সর্বোচ্চ ৫ MB)
     if (file.size > 5 * 1024 * 1024) {
       alert('ফাইলের সাইজ সর্বোচ্চ ৫ MB হতে পারবে।')
       return
     }
-
-    // সর্বোচ্চ ৩টি ছবি
     if (certificates.length >= 3) {
       alert('সর্বোচ্চ ৩টি সার্টিফিকেট আপলোড করা যাবে।')
       return
     }
-
-    // প্রিভিউ URL তৈরি
     const reader = new FileReader()
     reader.onloadend = () => {
-      setCertificates((prev) => [
-        ...prev,
-        { file, preview: reader.result, name: file.name }
-      ])
-      if (errors.certificates) {
-        setErrors((prev) => ({ ...prev, certificates: '' }))
-      }
+      setCertificates((prev) => [...prev, { file, preview: reader.result, name: file.name }])
+      if (errors.certificates) setErrors((prev) => ({ ...prev, certificates: '' }))
     }
     reader.readAsDataURL(file)
   }
 
-  // ---------- Step 2: ছবি মুছে ফেলা ----------
   const handleRemoveCertificate = (index) => {
     setCertificates((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  // ---------- Step 3 হ্যান্ডলার ----------
+  const handleContactChange = (field, value) => {
+    // মোবাইল নাম্বারে শুধু সংখ্যা
+    if (field === 'mobile') {
+      value = value.replace(/\D/g, '').slice(0, 11)
+    }
+    setContact((prev) => ({ ...prev, [field]: value }))
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }))
+  }
+
+  const handleIdTypeChange = (type) => {
+    setIdType(type)
+    setIdImage(null)
+    if (errors.idImage) setErrors((prev) => ({ ...prev, idImage: '' }))
+  }
+
+  const handleAddIdImage = (file) => {
+    if (!file) return
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']
+    if (!allowedTypes.includes(file.type)) {
+      alert('শুধু JPG, PNG অথবা PDF ফাইল আপলোড করতে পারবেন।')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('ফাইলের সাইজ সর্বোচ্চ ৫ MB হতে পারবে।')
+      return
+    }
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setIdImage({ file, preview: reader.result, name: file.name })
+      if (errors.idImage) setErrors((prev) => ({ ...prev, idImage: '' }))
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemoveIdImage = () => {
+    setIdImage(null)
   }
 
   // ---------- Step 1 → Step 2 ----------
@@ -269,23 +293,57 @@ function UserRegisterForm({ onClose }) {
   // ---------- Step 2 → Step 3 ----------
   const handleNextFromStep2 = () => {
     const newErrors = {}
+    if (!education.level) newErrors.level = 'শিক্ষাগত যোগ্যতা নির্বাচন করুন'
+    if (education.level && education.level !== 'শিক্ষাগত যোগ্যতা নাই') {
+      if (!education.institution.trim()) newErrors.institution = 'প্রতিষ্ঠানের নাম লিখুন'
+      if (!education.passingYear) newErrors.passingYear = 'পাশের সাল নির্বাচন করুন'
+      if (certificates.length === 0) newErrors.certificates = 'শিক্ষাগত যোগ্যতার সার্টিফিকেট আপলোড করুন'
+    }
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      const firstError = Object.keys(newErrors)[0]
+      const el = document.getElementById(`field-${firstError}`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+    setErrors({})
+    setCurrentStep(3)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
-    // শিক্ষাগত যোগ্যতা বাধ্যতামূলক
-    if (!education.level) {
-      newErrors.level = 'শিক্ষাগত যোগ্যতা নির্বাচন করুন'
+  // ---------- Step 3 → Step 2 ----------
+  const handleBackFromStep3 = () => {
+    setErrors({})
+    setCurrentStep(2)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  // ---------- Step 3 → Step 4 (কনফার্ম) ----------
+  const handleConfirmFromStep3 = () => {
+    const newErrors = {}
+
+    // পরিচয়পত্র — যেকোনো একটি
+    if (!idType) {
+      newErrors.idType = 'NID অথবা জন্মনিবন্ধন যেকোনো একটি নির্বাচন করুন'
+    } else if (!idImage) {
+      newErrors.idImage =
+        idType === 'nid'
+          ? 'NID কার্ডের ছবি আপলোড করুন'
+          : 'জন্মনিবন্ধনের ছবি আপলোড করুন'
     }
 
-    // যদি "শিক্ষাগত যোগ্যতা নাই" না হয় → বাকি সব বাধ্যতামূলক
-    if (education.level && education.level !== 'শিক্ষাগত যোগ্যতা নাই') {
-      if (!education.institution.trim()) {
-        newErrors.institution = 'প্রতিষ্ঠানের নাম লিখুন'
-      }
-      if (!education.passingYear) {
-        newErrors.passingYear = 'পাশের সাল নির্বাচন করুন'
-      }
-      if (certificates.length === 0) {
-        newErrors.certificates = 'শিক্ষাগত যোগ্যতার সার্টিফিকেট আপলোড করুন'
-      }
+    // মোবাইল
+    if (!contact.mobile.trim()) {
+      newErrors.mobile = 'মোবাইল নাম্বার দিন'
+    } else if (!/^01[3-9]\d{8}$/.test(contact.mobile)) {
+      newErrors.mobile = 'সঠিক ১১ ডিজিটের মোবাইল নাম্বার দিন (যেমন: 01712345678)'
+    }
+
+    // জিমেইল
+    if (!contact.email.trim()) {
+      newErrors.email = 'জিমেইল এড্রেস দিন'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) {
+      newErrors.email = 'সঠিক ইমেইল এড্রেস দিন'
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -296,9 +354,11 @@ function UserRegisterForm({ onClose }) {
       return
     }
 
-    // সব ঠিক — Step 3-এ যাওয়ার জন্য
-    alert('Step 2 সম্পন্ন! Step 3 পরের সাব-স্টেপে যুক্ত হবে।')
-    // setCurrentStep(3)  ← পরের ধাপে চালু করব
+    setErrors({})
+    alert(
+      `✅ আপনার তথ্য যাচাই সম্পন্ন!\n\nপরের ধাপে আপনার জিমেইলে (${contact.email}) ৬ সংখ্যার একটি ভেরিফিকেশন কোড পাঠানো হবে।\n\nএই OTP সিস্টেম পরের সাব-স্টেপে যুক্ত হবে (EmailJS সেটআপ সহ)।`
+    )
+    // setCurrentStep(4)  ← পরের ধাপে চালু করব
   }
 
   // =====================================================
@@ -306,30 +366,29 @@ function UserRegisterForm({ onClose }) {
   // =====================================================
   return (
     <div style={styles.wrapper}>
-      {/* ---------- হেডার ---------- */}
+      {/* হেডার */}
       <div style={styles.header}>
-        <button style={styles.closeBtn} onClick={onClose} aria-label="বন্ধ">
-          ✕
-        </button>
+        <button style={styles.closeBtn} onClick={onClose} aria-label="বন্ধ">✕</button>
         <div style={styles.headerContent}>
           <h2 style={styles.headerTitle}>নতুন অ্যাকাউন্ট</h2>
           <p style={styles.headerSubtitle}>সাধারণ ইউজার রেজিস্ট্রেশন</p>
         </div>
       </div>
 
-      {/* ---------- প্রগ্রেস বার ---------- */}
+      {/* প্রগ্রেস বার */}
       <div style={styles.progressWrapper}>
         <div style={styles.progressBar}>
           <div
             style={{
               ...styles.progressFill,
-              width: currentStep === 1 ? '25%' : '50%'
+              width: currentStep === 1 ? '25%' : currentStep === 2 ? '50%' : '75%'
             }}
           ></div>
         </div>
         <p style={styles.progressText}>
           {currentStep === 1 && 'ধাপ ১ / ৪ — ব্যক্তিগত তথ্য'}
           {currentStep === 2 && 'ধাপ ২ / ৪ — শিক্ষাগত যোগ্যতা'}
+          {currentStep === 3 && 'ধাপ ৩ / ৪ — পরিচয়পত্র ও যোগাযোগ'}
         </p>
       </div>
 
@@ -338,11 +397,8 @@ function UserRegisterForm({ onClose }) {
       {/* ================================================= */}
       {currentStep === 1 && (
         <div style={styles.body}>
-          {/* নাম */}
           <div style={styles.field} id="field-name">
-            <label style={styles.label}>
-              আপনার নাম <span style={styles.required}>*</span>
-            </label>
+            <label style={styles.label}>আপনার নাম <span style={styles.required}>*</span></label>
             <input
               type="text"
               style={{ ...styles.input, ...(errors.name ? styles.inputError : {}) }}
@@ -353,11 +409,8 @@ function UserRegisterForm({ onClose }) {
             {errors.name && <p style={styles.errorText}>{errors.name}</p>}
           </div>
 
-          {/* বাবার নাম */}
           <div style={styles.field} id="field-fatherName">
-            <label style={styles.label}>
-              বাবার নাম <span style={styles.required}>*</span>
-            </label>
+            <label style={styles.label}>বাবার নাম <span style={styles.required}>*</span></label>
             <input
               type="text"
               style={{ ...styles.input, ...(errors.fatherName ? styles.inputError : {}) }}
@@ -368,11 +421,8 @@ function UserRegisterForm({ onClose }) {
             {errors.fatherName && <p style={styles.errorText}>{errors.fatherName}</p>}
           </div>
 
-          {/* মায়ের নাম */}
           <div style={styles.field} id="field-motherName">
-            <label style={styles.label}>
-              মায়ের নাম <span style={styles.required}>*</span>
-            </label>
+            <label style={styles.label}>মায়ের নাম <span style={styles.required}>*</span></label>
             <input
               type="text"
               style={{ ...styles.input, ...(errors.motherName ? styles.inputError : {}) }}
@@ -383,11 +433,8 @@ function UserRegisterForm({ onClose }) {
             {errors.motherName && <p style={styles.errorText}>{errors.motherName}</p>}
           </div>
 
-          {/* বিভাগ */}
           <div style={styles.field} id="field-division">
-            <label style={styles.label}>
-              বিভাগ <span style={styles.required}>*</span>
-            </label>
+            <label style={styles.label}>বিভাগ <span style={styles.required}>*</span></label>
             <select
               style={{ ...styles.input, ...styles.select, ...(errors.division ? styles.inputError : {}) }}
               value={formData.division}
@@ -401,11 +448,8 @@ function UserRegisterForm({ onClose }) {
             {errors.division && <p style={styles.errorText}>{errors.division}</p>}
           </div>
 
-          {/* জেলা */}
           <div style={styles.field} id="field-district">
-            <label style={styles.label}>
-              জেলা <span style={styles.required}>*</span>
-            </label>
+            <label style={styles.label}>জেলা <span style={styles.required}>*</span></label>
             <select
               style={{
                 ...styles.input,
@@ -427,11 +471,8 @@ function UserRegisterForm({ onClose }) {
             {errors.district && <p style={styles.errorText}>{errors.district}</p>}
           </div>
 
-          {/* থানা */}
           <div style={styles.field} id="field-thana">
-            <label style={styles.label}>
-              থানা <span style={styles.required}>*</span>
-            </label>
+            <label style={styles.label}>থানা <span style={styles.required}>*</span></label>
             <div style={styles.thanaWrapper}>
               <input
                 type="text"
@@ -440,11 +481,7 @@ function UserRegisterForm({ onClose }) {
                   ...(errors.thana ? styles.inputError : {}),
                   ...(availableThanas.length === 0 ? styles.inputDisabled : {})
                 }}
-                placeholder={
-                  availableThanas.length === 0
-                    ? 'প্রথমে জেলা নির্বাচন করুন'
-                    : 'থানার নাম লিখুন বা সার্চ করুন...'
-                }
+                placeholder={availableThanas.length === 0 ? 'প্রথমে জেলা নির্বাচন করুন' : 'থানার নাম লিখুন বা সার্চ করুন...'}
                 value={thanaSearch}
                 disabled={availableThanas.length === 0}
                 onChange={(e) => {
@@ -481,11 +518,8 @@ function UserRegisterForm({ onClose }) {
             {errors.thana && <p style={styles.errorText}>{errors.thana}</p>}
           </div>
 
-          {/* গ্রাম */}
           <div style={styles.field} id="field-village">
-            <label style={styles.label}>
-              গ্রাম / এলাকা <span style={styles.required}>*</span>
-            </label>
+            <label style={styles.label}>গ্রাম / এলাকা <span style={styles.required}>*</span></label>
             <input
               type="text"
               style={{ ...styles.input, ...(errors.village ? styles.inputError : {}) }}
@@ -503,11 +537,8 @@ function UserRegisterForm({ onClose }) {
       {/* ================================================= */}
       {currentStep === 2 && (
         <div style={styles.body}>
-          {/* শিক্ষাগত যোগ্যতা */}
           <div style={styles.field} id="field-level">
-            <label style={styles.label}>
-              শিক্ষাগত যোগ্যতা <span style={styles.required}>*</span>
-            </label>
+            <label style={styles.label}>শিক্ষাগত যোগ্যতা <span style={styles.required}>*</span></label>
             <select
               style={{ ...styles.input, ...styles.select, ...(errors.level ? styles.inputError : {}) }}
               value={education.level}
@@ -521,7 +552,6 @@ function UserRegisterForm({ onClose }) {
             {errors.level && <p style={styles.errorText}>{errors.level}</p>}
           </div>
 
-          {/* শিক্ষাগত যোগ্যতা নাই হলে তথ্য বার্তা */}
           {education.level === 'শিক্ষাগত যোগ্যতা নাই' && (
             <div style={styles.infoBox}>
               <p style={styles.infoBoxText}>
@@ -530,13 +560,10 @@ function UserRegisterForm({ onClose }) {
             </div>
           )}
 
-          {/* প্রতিষ্ঠানের নাম — শুধু "নাই" না হলে দেখাবে */}
           {education.level && education.level !== 'শিক্ষাগত যোগ্যতা নাই' && (
             <>
               <div style={styles.field} id="field-institution">
-                <label style={styles.label}>
-                  প্রতিষ্ঠানের নাম <span style={styles.required}>*</span>
-                </label>
+                <label style={styles.label}>প্রতিষ্ঠানের নাম <span style={styles.required}>*</span></label>
                 <input
                   type="text"
                   style={{ ...styles.input, ...(errors.institution ? styles.inputError : {}) }}
@@ -547,11 +574,8 @@ function UserRegisterForm({ onClose }) {
                 {errors.institution && <p style={styles.errorText}>{errors.institution}</p>}
               </div>
 
-              {/* পাশের সাল */}
               <div style={styles.field} id="field-passingYear">
-                <label style={styles.label}>
-                  পাশের সাল <span style={styles.required}>*</span>
-                </label>
+                <label style={styles.label}>পাশের সাল <span style={styles.required}>*</span></label>
                 <select
                   style={{ ...styles.input, ...styles.select, ...(errors.passingYear ? styles.inputError : {}) }}
                   value={education.passingYear}
@@ -565,16 +589,10 @@ function UserRegisterForm({ onClose }) {
                 {errors.passingYear && <p style={styles.errorText}>{errors.passingYear}</p>}
               </div>
 
-              {/* সার্টিফিকেট ছবি আপলোড */}
               <div style={styles.field} id="field-certificates">
-                <label style={styles.label}>
-                  শিক্ষাগত সার্টিফিকেট <span style={styles.required}>*</span>
-                </label>
-                <p style={styles.helperText}>
-                  JPG, PNG অথবা PDF — সর্বোচ্চ ৩টি, প্রতিটি ৫ MB পর্যন্ত
-                </p>
+                <label style={styles.label}>শিক্ষাগত সার্টিফিকেট <span style={styles.required}>*</span></label>
+                <p style={styles.helperText}>JPG, PNG অথবা PDF — সর্বোচ্চ ৩টি, প্রতিটি ৫ MB পর্যন্ত</p>
 
-                {/* আপলোড করা ছবির প্রিভিউ */}
                 {certificates.length > 0 && (
                   <div style={styles.previewGrid}>
                     {certificates.map((cert, index) => (
@@ -585,26 +603,19 @@ function UserRegisterForm({ onClose }) {
                             <span style={styles.pdfName}>{cert.name}</span>
                           </div>
                         ) : (
-                          <img
-                            src={cert.preview}
-                            alt={`সার্টিফিকেট ${index + 1}`}
-                            style={styles.previewImage}
-                          />
+                          <img src={cert.preview} alt={`সার্টিফিকেট ${index + 1}`} style={styles.previewImage} />
                         )}
                         <button
                           type="button"
                           style={styles.removeBtn}
                           onClick={() => handleRemoveCertificate(index)}
                           aria-label="মুছুন"
-                        >
-                          ✕
-                        </button>
+                        >✕</button>
                       </div>
                     ))}
                   </div>
                 )}
 
-                {/* + আইকন দিয়ে আপলোড বাটন */}
                 {certificates.length < 3 && (
                   <label style={styles.addBtn}>
                     <input
@@ -613,14 +624,12 @@ function UserRegisterForm({ onClose }) {
                       style={styles.fileInputHidden}
                       onChange={(e) => {
                         handleAddCertificate(e.target.files[0])
-                        e.target.value = ''  // একই ফাইল আবার সিলেক্টের অনুমতি
+                        e.target.value = ''
                       }}
                     />
                     <span style={styles.addIcon}>+</span>
                     <span style={styles.addText}>
-                      {certificates.length === 0
-                        ? 'সার্টিফিকেট আপলোড করুন'
-                        : `আরও আপলোড করুন (${certificates.length}/৩)`}
+                      {certificates.length === 0 ? 'সার্টিফিকেট আপলোড করুন' : `আরও আপলোড করুন (${certificates.length}/৩)`}
                     </span>
                   </label>
                 )}
@@ -632,27 +641,151 @@ function UserRegisterForm({ onClose }) {
         </div>
       )}
 
+      {/* ================================================= */}
+      {/* Step 3: পরিচয়পত্র ও যোগাযোগ */}
+      {/* ================================================= */}
+      {currentStep === 3 && (
+        <div style={styles.body}>
+          {/* পরিচয়পত্র নির্বাচন */}
+          <div style={styles.field} id="field-idType">
+            <label style={styles.label}>
+              পরিচয়পত্র <span style={styles.required}>*</span>
+            </label>
+            <p style={styles.helperText}>NID কার্ড অথবা জন্মনিবন্ধন — যেকোনো একটি নির্বাচন করুন</p>
+
+            <div style={styles.idTypeRow}>
+              <button
+                type="button"
+                style={{
+                  ...styles.idTypeBtn,
+                  ...(idType === 'nid' ? styles.idTypeBtnActive : {})
+                }}
+                onClick={() => handleIdTypeChange('nid')}
+              >
+                <span style={styles.idTypeIcon}>🪪</span>
+                <span style={styles.idTypeLabel}>NID কার্ড</span>
+              </button>
+
+              <button
+                type="button"
+                style={{
+                  ...styles.idTypeBtn,
+                  ...(idType === 'birth' ? styles.idTypeBtnActive : {})
+                }}
+                onClick={() => handleIdTypeChange('birth')}
+              >
+                <span style={styles.idTypeIcon}>📜</span>
+                <span style={styles.idTypeLabel}>জন্মনিবন্ধন</span>
+              </button>
+            </div>
+            {errors.idType && <p style={styles.errorText}>{errors.idType}</p>}
+          </div>
+
+          {/* পরিচয়পত্রের ছবি — যেকোনো একটি নির্বাচনের পরেই দেখাবে */}
+          {idType && (
+            <div style={styles.field} id="field-idImage">
+              <label style={styles.label}>
+                {idType === 'nid' ? 'NID কার্ডের ছবি' : 'জন্মনিবন্ধনের ছবি'}{' '}
+                <span style={styles.required}>*</span>
+              </label>
+              <p style={styles.helperText}>JPG, PNG অথবা PDF — সর্বোচ্চ ৫ MB</p>
+
+              {idImage ? (
+                <div style={styles.singlePreviewWrapper}>
+                  {idImage.file.type === 'application/pdf' ? (
+                    <div style={styles.pdfPreviewLarge}>
+                      <span style={styles.pdfIconLarge}>📄</span>
+                      <span style={styles.pdfNameLarge}>{idImage.name}</span>
+                    </div>
+                  ) : (
+                    <img src={idImage.preview} alt="পরিচয়পত্র" style={styles.singlePreviewImage} />
+                  )}
+                  <button
+                    type="button"
+                    style={styles.removeBtnLarge}
+                    onClick={handleRemoveIdImage}
+                    aria-label="মুছুন"
+                  >✕</button>
+                </div>
+              ) : (
+                <label style={styles.addBtn}>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,application/pdf"
+                    style={styles.fileInputHidden}
+                    onChange={(e) => {
+                      handleAddIdImage(e.target.files[0])
+                      e.target.value = ''
+                    }}
+                  />
+                  <span style={styles.addIcon}>+</span>
+                  <span style={styles.addText}>
+                    {idType === 'nid' ? 'NID কার্ড আপলোড করুন' : 'জন্মনিবন্ধন আপলোড করুন'}
+                  </span>
+                </label>
+              )}
+
+              {errors.idImage && <p style={styles.errorText}>{errors.idImage}</p>}
+            </div>
+          )}
+
+          {/* মোবাইল নাম্বার */}
+          <div style={styles.field} id="field-mobile">
+            <label style={styles.label}>
+              মোবাইল নাম্বার <span style={styles.required}>*</span>
+            </label>
+            <input
+              type="tel"
+              inputMode="numeric"
+              style={{ ...styles.input, ...(errors.mobile ? styles.inputError : {}) }}
+              placeholder="যেমন: 01712345678"
+              value={contact.mobile}
+              onChange={(e) => handleContactChange('mobile', e.target.value)}
+            />
+            <p style={styles.helperText}>আপনার একটি সচল মোবাইল নাম্বার দিন (১১ ডিজিট)</p>
+            {errors.mobile && <p style={styles.errorText}>{errors.mobile}</p>}
+          </div>
+
+          {/* জিমেইল */}
+          <div style={styles.field} id="field-email">
+            <label style={styles.label}>
+              জিমেইল এড্রেস <span style={styles.required}>*</span>
+            </label>
+            <input
+              type="email"
+              inputMode="email"
+              style={{ ...styles.input, ...(errors.email ? styles.inputError : {}) }}
+              placeholder="যেমন: example@gmail.com"
+              value={contact.email}
+              onChange={(e) => handleContactChange('email', e.target.value)}
+            />
+            <p style={styles.helperText}>আপনার একটি সচল জিমেইল দিন (এখানেই ভেরিফিকেশন কোড পাঠানো হবে)</p>
+            {errors.email && <p style={styles.errorText}>{errors.email}</p>}
+          </div>
+        </div>
+      )}
+
       {/* ---------- নিচের বাটন ---------- */}
       <div style={styles.footer}>
         {currentStep === 1 && (
-          <button style={styles.btnNext} onClick={handleNextFromStep1}>
-            পরবর্তী ধাপ →
-          </button>
+          <button style={styles.btnNext} onClick={handleNextFromStep1}>পরবর্তী ধাপ →</button>
         )}
 
         {currentStep === 2 && (
           <div style={styles.footerRow}>
-            <button style={styles.btnBack} onClick={handleBackFromStep2}>
-              ← পূর্ববর্তী
-            </button>
-            <button style={styles.btnNextHalf} onClick={handleNextFromStep2}>
-              পরবর্তী ধাপ →
-            </button>
+            <button style={styles.btnBack} onClick={handleBackFromStep2}>← পূর্ববর্তী</button>
+            <button style={styles.btnNextHalf} onClick={handleNextFromStep2}>পরবর্তী ধাপ →</button>
+          </div>
+        )}
+
+        {currentStep === 3 && (
+          <div style={styles.footerRow}>
+            <button style={styles.btnBack} onClick={handleBackFromStep3}>← পূর্ববর্তী</button>
+            <button style={styles.btnConfirm} onClick={handleConfirmFromStep3}>কনফার্ম করুন</button>
           </div>
         )}
       </div>
 
-      {/* ---------- কীফ্রেম ---------- */}
       <style>{`
         @keyframes formFadeIn {
           from { opacity: 0; transform: translateY(8px); }
@@ -680,399 +813,258 @@ const styles = {
     overflowX: 'hidden',
     animation: 'formFadeIn 0.4s ease-out',
   },
-
   header: {
-    position: 'sticky',
-    top: 0,
-    zIndex: 50,
+    position: 'sticky', top: 0, zIndex: 50,
     background: 'linear-gradient(135deg, #0a1f44 0%, #16346b 100%)',
-    color: '#ffffff',
-    padding: '14px 16px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
+    color: '#ffffff', padding: '14px 16px',
+    display: 'flex', alignItems: 'center', gap: '12px',
     boxShadow: '0 2px 10px rgba(10, 31, 68, 0.20)',
   },
-
   closeBtn: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '50%',
-    background: 'rgba(255,255,255,0.12)',
-    color: '#ffffff',
-    fontSize: '16px',
-    fontWeight: 600,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    flexShrink: 0,
+    width: '36px', height: '36px', borderRadius: '50%',
+    background: 'rgba(255,255,255,0.12)', color: '#ffffff',
+    fontSize: '16px', fontWeight: 600,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', flexShrink: 0,
   },
-
-  headerContent: {
-    flex: 1,
-  },
-
+  headerContent: { flex: 1 },
   headerTitle: {
-    fontSize: '16px',
-    fontWeight: 700,
-    color: '#ffffff',
-    margin: 0,
-    lineHeight: 1.2,
-    fontFamily: "'Hind Siliguri', sans-serif",
+    fontSize: '16px', fontWeight: 700, color: '#ffffff',
+    margin: 0, lineHeight: 1.2, fontFamily: "'Hind Siliguri', sans-serif",
   },
-
   headerSubtitle: {
-    fontSize: '11.5px',
-    color: '#e6c267',
-    margin: 0,
-    marginTop: '2px',
+    fontSize: '11.5px', color: '#e6c267', margin: 0, marginTop: '2px',
     fontFamily: "'Hind Siliguri', sans-serif",
   },
-
   progressWrapper: {
-    background: '#ffffff',
-    padding: '14px 16px 12px',
+    background: '#ffffff', padding: '14px 16px 12px',
     borderBottom: '1px solid #e2e6ee',
   },
-
   progressBar: {
-    width: '100%',
-    height: '6px',
-    background: '#e2e6ee',
-    borderRadius: '6px',
-    overflow: 'hidden',
-    marginBottom: '8px',
+    width: '100%', height: '6px', background: '#e2e6ee',
+    borderRadius: '6px', overflow: 'hidden', marginBottom: '8px',
   },
-
   progressFill: {
     height: '100%',
     background: 'linear-gradient(90deg, #d4a537, #e6c267)',
-    borderRadius: '6px',
-    transition: 'width 0.4s ease',
+    borderRadius: '6px', transition: 'width 0.4s ease',
   },
-
   progressText: {
-    fontSize: '12px',
-    color: '#5a6472',
-    margin: 0,
-    textAlign: 'center',
-    fontFamily: "'Hind Siliguri', sans-serif",
-    fontWeight: 500,
+    fontSize: '12px', color: '#5a6472', margin: 0, textAlign: 'center',
+    fontFamily: "'Hind Siliguri', sans-serif", fontWeight: 500,
   },
-
   body: {
-    flex: 1,
-    maxWidth: '480px',
-    width: '100%',
-    margin: '0 auto',
-    padding: '20px 16px 24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '18px',
+    flex: 1, maxWidth: '480px', width: '100%',
+    margin: '0 auto', padding: '20px 16px 24px',
+    display: 'flex', flexDirection: 'column', gap: '18px',
   },
-
-  field: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
-  },
-
+  field: { display: 'flex', flexDirection: 'column', gap: '6px' },
   label: {
-    fontSize: '13.5px',
-    fontWeight: 600,
-    color: '#0a1f44',
+    fontSize: '13.5px', fontWeight: 600, color: '#0a1f44',
     fontFamily: "'Hind Siliguri', sans-serif",
   },
-
-  required: {
-    color: '#d93636',
-    fontWeight: 700,
-  },
-
+  required: { color: '#d93636', fontWeight: 700 },
   helperText: {
-    fontSize: '11.5px',
-    color: '#5a6472',
-    margin: 0,
-    marginBottom: '4px',
+    fontSize: '11.5px', color: '#5a6472', margin: 0, marginBottom: '4px',
     fontFamily: "'Hind Siliguri', sans-serif",
   },
-
   input: {
-    width: '100%',
-    padding: '13px 14px',
-    borderRadius: '12px',
-    border: '1.5px solid #e2e6ee',
-    background: '#ffffff',
-    fontSize: '14.5px',
-    color: '#1a1a1a',
-    fontFamily: "'Hind Siliguri', sans-serif",
-    outline: 'none',
+    width: '100%', padding: '13px 14px', borderRadius: '12px',
+    border: '1.5px solid #e2e6ee', background: '#ffffff',
+    fontSize: '14.5px', color: '#1a1a1a',
+    fontFamily: "'Hind Siliguri', sans-serif", outline: 'none',
     transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
   },
-
-  inputError: {
-    borderColor: '#d93636',
-    background: '#fff5f5',
-  },
-
+  inputError: { borderColor: '#d93636', background: '#fff5f5' },
   inputDisabled: {
-    background: '#f0f2f6',
-    color: '#8a92a2',
-    cursor: 'not-allowed',
+    background: '#f0f2f6', color: '#8a92a2', cursor: 'not-allowed',
   },
-
   select: {
-    appearance: 'none',
-    WebkitAppearance: 'none',
+    appearance: 'none', WebkitAppearance: 'none',
     backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230a1f44' stroke-width='3'><polyline points='6 9 12 15 18 9'/></svg>\")",
-    backgroundRepeat: 'no-repeat',
-    backgroundPosition: 'right 14px center',
+    backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center',
     paddingRight: '36px',
   },
-
   errorText: {
-    fontSize: '12px',
-    color: '#d93636',
-    margin: 0,
-    marginTop: '2px',
-    fontFamily: "'Hind Siliguri', sans-serif",
-    fontWeight: 500,
+    fontSize: '12px', color: '#d93636', margin: 0, marginTop: '2px',
+    fontFamily: "'Hind Siliguri', sans-serif", fontWeight: 500,
   },
-
   infoBox: {
     background: 'rgba(212, 165, 55, 0.10)',
     borderLeft: '4px solid #d4a537',
-    borderRadius: '8px',
-    padding: '12px 14px',
+    borderRadius: '8px', padding: '12px 14px',
   },
-
   infoBoxText: {
-    fontSize: '13px',
-    color: '#0a1f44',
-    margin: 0,
-    lineHeight: 1.6,
-    fontFamily: "'Hind Siliguri', sans-serif",
-    fontWeight: 500,
+    fontSize: '13px', color: '#0a1f44', margin: 0, lineHeight: 1.6,
+    fontFamily: "'Hind Siliguri', sans-serif", fontWeight: 500,
   },
-
-  thanaWrapper: {
-    position: 'relative',
-  },
-
+  thanaWrapper: { position: 'relative' },
   thanaDropdown: {
-    position: 'absolute',
-    top: 'calc(100% + 6px)',
-    left: 0,
-    right: 0,
-    maxHeight: '220px',
-    overflowY: 'auto',
-    background: '#ffffff',
+    position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
+    maxHeight: '220px', overflowY: 'auto', background: '#ffffff',
     borderRadius: '12px',
     boxShadow: '0 8px 24px rgba(10, 31, 68, 0.15)',
-    border: '1px solid #e2e6ee',
-    zIndex: 100,
-    padding: '6px',
+    border: '1px solid #e2e6ee', zIndex: 100, padding: '6px',
     animation: 'dropdownIn 0.2s ease-out',
   },
-
   thanaOption: {
-    width: '100%',
-    padding: '11px 12px',
-    background: 'transparent',
-    border: 'none',
-    borderRadius: '8px',
-    textAlign: 'left',
-    fontSize: '14px',
-    color: '#1a1a1a',
+    width: '100%', padding: '11px 12px', background: 'transparent',
+    border: 'none', borderRadius: '8px', textAlign: 'left',
+    fontSize: '14px', color: '#1a1a1a',
     fontFamily: "'Hind Siliguri', sans-serif",
-    cursor: 'pointer',
-    transition: 'background 0.15s ease',
+    cursor: 'pointer', transition: 'background 0.15s ease',
   },
-
   thanaOptionActive: {
-    background: 'rgba(212, 165, 55, 0.15)',
-    color: '#0a1f44',
-    fontWeight: 600,
+    background: 'rgba(212, 165, 55, 0.15)', color: '#0a1f44', fontWeight: 600,
   },
-
   noResult: {
-    fontSize: '13px',
-    color: '#8a92a2',
-    textAlign: 'center',
-    padding: '14px',
-    margin: 0,
-    fontFamily: "'Hind Siliguri', sans-serif",
+    fontSize: '13px', color: '#8a92a2', textAlign: 'center',
+    padding: '14px', margin: 0, fontFamily: "'Hind Siliguri', sans-serif",
   },
-
   previewGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))',
-    gap: '10px',
-    marginBottom: '12px',
+    display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))',
+    gap: '10px', marginBottom: '12px',
   },
-
   previewItem: {
-    position: 'relative',
-    width: '100%',
-    aspectRatio: '1 / 1',
-    borderRadius: '12px',
-    overflow: 'hidden',
-    background: '#f0f2f6',
-    border: '1.5px solid #e2e6ee',
+    position: 'relative', width: '100%', aspectRatio: '1 / 1',
+    borderRadius: '12px', overflow: 'hidden',
+    background: '#f0f2f6', border: '1.5px solid #e2e6ee',
   },
-
-  previewImage: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-    display: 'block',
-  },
-
+  previewImage: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
   pdfPreview: {
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '6px',
-    background: '#fff5e6',
-    gap: '4px',
+    width: '100%', height: '100%',
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center',
+    padding: '6px', background: '#fff5e6', gap: '4px',
   },
-
-  pdfIcon: {
-    fontSize: '24px',
-  },
-
+  pdfIcon: { fontSize: '24px' },
   pdfName: {
-    fontSize: '9px',
-    color: '#5a6472',
-    textAlign: 'center',
-    wordBreak: 'break-all',
-    fontFamily: "'Hind Siliguri', sans-serif",
+    fontSize: '9px', color: '#5a6472', textAlign: 'center',
+    wordBreak: 'break-all', fontFamily: "'Hind Siliguri', sans-serif",
     lineHeight: 1.2,
   },
-
+  singlePreviewWrapper: {
+    position: 'relative', width: '100%', maxWidth: '240px',
+    aspectRatio: '16 / 10', borderRadius: '12px',
+    overflow: 'hidden', background: '#f0f2f6',
+    border: '1.5px solid #e2e6ee',
+  },
+  singlePreviewImage: {
+    width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+  },
+  pdfPreviewLarge: {
+    width: '100%', height: '100%',
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center',
+    background: '#fff5e6', gap: '8px', padding: '10px',
+  },
+  pdfIconLarge: { fontSize: '36px' },
+  pdfNameLarge: {
+    fontSize: '11px', color: '#5a6472', textAlign: 'center',
+    wordBreak: 'break-all', fontFamily: "'Hind Siliguri', sans-serif",
+  },
   removeBtn: {
-    position: 'absolute',
-    top: '4px',
-    right: '4px',
-    width: '22px',
-    height: '22px',
-    borderRadius: '50%',
-    background: 'rgba(217, 54, 54, 0.95)',
-    color: '#ffffff',
-    fontSize: '11px',
-    fontWeight: 700,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    border: 'none',
+    position: 'absolute', top: '4px', right: '4px',
+    width: '22px', height: '22px', borderRadius: '50%',
+    background: 'rgba(217, 54, 54, 0.95)', color: '#ffffff',
+    fontSize: '11px', fontWeight: 700,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', border: 'none',
     boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
   },
-
+  removeBtnLarge: {
+    position: 'absolute', top: '8px', right: '8px',
+    width: '28px', height: '28px', borderRadius: '50%',
+    background: 'rgba(217, 54, 54, 0.95)', color: '#ffffff',
+    fontSize: '13px', fontWeight: 700,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', border: 'none',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.30)',
+  },
   addBtn: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '6px',
-    width: '100%',
-    padding: '22px 16px',
-    borderRadius: '12px',
-    border: '2px dashed #d4a537',
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center',
+    gap: '6px', width: '100%', padding: '22px 16px',
+    borderRadius: '12px', border: '2px dashed #d4a537',
     background: 'rgba(212, 165, 55, 0.06)',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    cursor: 'pointer', transition: 'all 0.2s ease',
   },
-
-  fileInputHidden: {
-    display: 'none',
-  },
-
+  fileInputHidden: { display: 'none' },
   addIcon: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '50%',
+    width: '40px', height: '40px', borderRadius: '50%',
     background: 'linear-gradient(135deg, #0a1f44, #16346b)',
-    color: '#ffffff',
-    fontSize: '22px',
-    fontWeight: 700,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    color: '#ffffff', fontSize: '22px', fontWeight: 700,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
     boxShadow: '0 4px 10px rgba(10,31,68,0.20)',
   },
-
   addText: {
-    fontSize: '13px',
-    color: '#0a1f44',
-    fontWeight: 600,
+    fontSize: '13px', color: '#0a1f44', fontWeight: 600,
     fontFamily: "'Hind Siliguri', sans-serif",
   },
-
+  idTypeRow: {
+    display: 'flex', gap: '10px', marginTop: '4px',
+  },
+  idTypeBtn: {
+    flex: 1, padding: '14px 10px', borderRadius: '12px',
+    border: '2px solid #e2e6ee', background: '#ffffff',
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', gap: '6px', cursor: 'pointer',
+    transition: 'all 0.2s ease',
+  },
+  idTypeBtnActive: {
+    borderColor: '#d4a537',
+    background: 'rgba(212, 165, 55, 0.08)',
+    boxShadow: '0 4px 12px rgba(212, 165, 55, 0.20)',
+  },
+  idTypeIcon: { fontSize: '24px' },
+  idTypeLabel: {
+    fontSize: '13px', fontWeight: 600, color: '#0a1f44',
+    fontFamily: "'Hind Siliguri', sans-serif",
+  },
   footer: {
-    position: 'sticky',
-    bottom: 0,
-    background: '#ffffff',
-    padding: '14px 16px',
-    borderTop: '1px solid #e2e6ee',
+    position: 'sticky', bottom: 0, background: '#ffffff',
+    padding: '14px 16px', borderTop: '1px solid #e2e6ee',
     boxShadow: '0 -4px 14px rgba(10, 31, 68, 0.06)',
   },
-
   footerRow: {
-    display: 'flex',
-    gap: '10px',
-    maxWidth: '480px',
-    margin: '0 auto',
+    display: 'flex', gap: '10px',
+    maxWidth: '480px', margin: '0 auto',
   },
-
   btnNext: {
-    width: '100%',
-    maxWidth: '480px',
-    margin: '0 auto',
-    display: 'block',
-    padding: '15px 20px',
+    width: '100%', maxWidth: '480px', margin: '0 auto',
+    display: 'block', padding: '15px 20px',
     borderRadius: '12px',
     background: 'linear-gradient(135deg, #0a1f44, #16346b)',
-    color: '#ffffff',
-    fontSize: '16px',
-    fontWeight: 700,
+    color: '#ffffff', fontSize: '16px', fontWeight: 700,
     fontFamily: "'Hind Siliguri', sans-serif",
-    border: 'none',
-    cursor: 'pointer',
+    border: 'none', cursor: 'pointer',
     boxShadow: '0 6px 16px rgba(10, 31, 68, 0.25)',
     letterSpacing: '0.3px',
   },
-
   btnNextHalf: {
-    flex: 1,
-    padding: '15px 20px',
-    borderRadius: '12px',
+    flex: 1, padding: '15px 20px', borderRadius: '12px',
     background: 'linear-gradient(135deg, #0a1f44, #16346b)',
-    color: '#ffffff',
-    fontSize: '15px',
-    fontWeight: 700,
+    color: '#ffffff', fontSize: '15px', fontWeight: 700,
     fontFamily: "'Hind Siliguri', sans-serif",
-    border: 'none',
-    cursor: 'pointer',
+    border: 'none', cursor: 'pointer',
     boxShadow: '0 6px 16px rgba(10, 31, 68, 0.25)',
     letterSpacing: '0.3px',
   },
-
-  btnBack: {
-    flex: 1,
-    padding: '15px 20px',
-    borderRadius: '12px',
-    background: '#ffffff',
-    color: '#0a1f44',
-    fontSize: '15px',
-    fontWeight: 700,
+  btnConfirm: {
+    flex: 1, padding: '15px 20px', borderRadius: '12px',
+    background: 'linear-gradient(135deg, #d4a537, #e6c267)',
+    color: '#0a1f44', fontSize: '15px', fontWeight: 700,
     fontFamily: "'Hind Siliguri', sans-serif",
-    border: '2px solid #0a1f44',
-    cursor: 'pointer',
+    border: 'none', cursor: 'pointer',
+    boxShadow: '0 6px 16px rgba(212, 165, 55, 0.35)',
+    letterSpacing: '0.3px',
+  },
+  btnBack: {
+    flex: 1, padding: '15px 20px', borderRadius: '12px',
+    background: '#ffffff', color: '#0a1f44',
+    fontSize: '15px', fontWeight: 700,
+    fontFamily: "'Hind Siliguri', sans-serif",
+    border: '2px solid #0a1f44', cursor: 'pointer',
     letterSpacing: '0.3px',
   },
 }
