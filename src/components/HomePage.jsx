@@ -1,8 +1,12 @@
 import { useState } from 'react'
+import UserRegisterForm from './UserRegisterForm.jsx'
 
 function HomePage() {
   // পপআপ দেখানো/লুকানোর অবস্থা
   const [showAccountPopup, setShowAccountPopup] = useState(false)
+
+  // সাধারণ ইউজার রেজিস্ট্রেশন ফরম দেখানো/লুকানোর অবস্থা
+  const [showRegisterForm, setShowRegisterForm] = useState(false)
 
   // মোট ব্যবহারকারীর সংখ্যা (Supabase যুক্ত হলে বাস্তব সংখ্যা আসবে)
   const [userCount, setUserCount] = useState(0)
@@ -17,11 +21,38 @@ function HomePage() {
     setShowAccountPopup(false)
   }
 
+  // সাধারণ ইউজার নির্বাচন করলে → রেজিস্ট্রেশন ফরম খুলবে
+  const handleSelectGeneralUser = () => {
+    setShowAccountPopup(false)
+    setShowRegisterForm(true)
+  }
+
+  // চাকরিজীবী নির্বাচন করলে → ভবিষ্যতে আলাদা ফরম
+  const handleSelectJobSeeker = () => {
+    alert('চাকরিজীবী রেজিস্ট্রেশন ফরম পরের ধাপে যুক্ত হবে।')
+    setShowAccountPopup(false)
+  }
+
+  // রেজিস্ট্রেশন ফরম বন্ধ করে হোমপেজে ফেরা
+  const handleCloseRegisterForm = () => {
+    setShowRegisterForm(false)
+  }
+
   // লগইন বাটন (পরের ধাপে কাজ করব)
   const handleLogin = () => {
     alert('লগইন পেজ শীঘ্রই যুক্ত করা হবে।')
   }
 
+  // =====================================================
+  // যদি রেজিস্ট্রেশন ফরম দেখাতে হয় — শুধু সেই ফরম render হবে
+  // =====================================================
+  if (showRegisterForm) {
+    return <UserRegisterForm onClose={handleCloseRegisterForm} />
+  }
+
+  // =====================================================
+  // নাহলে সাধারণ হোমপেজ
+  // =====================================================
   return (
     <div style={styles.page}>
       {/* ============ হেডার ============ */}
@@ -133,10 +164,7 @@ function HomePage() {
 
             <button
               style={styles.popupOption}
-              onClick={() => {
-                alert('সাধারণ ইউজার রেজিস্ট্রেশন ফরম পরের ধাপে যুক্ত হবে।')
-                handleCloseAccount()
-              }}
+              onClick={handleSelectGeneralUser}
             >
               <div style={styles.popupOptionIcon}>👤</div>
               <div style={styles.popupOptionContent}>
@@ -149,10 +177,7 @@ function HomePage() {
 
             <button
               style={styles.popupOption}
-              onClick={() => {
-                alert('চাকরিজীবী রেজিস্ট্রেশন ফরম পরের ধাপে যুক্ত হবে।')
-                handleCloseAccount()
-              }}
+              onClick={handleSelectJobSeeker}
             >
               <div style={styles.popupOptionIcon}>💼</div>
               <div style={styles.popupOptionContent}>
@@ -192,7 +217,7 @@ function HomePage() {
 }
 
 // =====================================================
-// সব স্টাইল এখানে (একই ফাইলে — আপনার নির্দেশ অনুযায়ী)
+// সব স্টাইল (একই ফাইলে)
 // =====================================================
 const styles = {
   page: {
@@ -204,7 +229,6 @@ const styles = {
     overflowX: 'hidden',
   },
 
-  // ---------- হেডার ----------
   header: {
     position: 'sticky',
     top: 0,
@@ -281,7 +305,6 @@ const styles = {
     borderRadius: '2px',
   },
 
-  // ---------- মূল কনটেন্ট ----------
   main: {
     flex: 1,
     width: '100%',
@@ -293,7 +316,6 @@ const styles = {
     gap: '18px',
   },
 
-  // স্বাগতম কার্ড
   welcomeCard: {
     background: '#ffffff',
     borderRadius: '18px',
@@ -358,7 +380,6 @@ const styles = {
     fontFamily: "'Hind Siliguri', sans-serif",
   },
 
-  // অ্যাকশন বাটন
   actionSection: {
     display: 'flex',
     flexDirection: 'column',
@@ -395,7 +416,6 @@ const styles = {
     letterSpacing: '0.3px',
   },
 
-  // স্ট্যাটস কার্ড
   statsCard: {
     background: 'linear-gradient(135deg, #0a1f44 0%, #16346b 100%)',
     borderRadius: '18px',
@@ -436,7 +456,6 @@ const styles = {
     lineHeight: 1.5,
   },
 
-  // ---------- ফুটার ----------
   footer: {
     background: '#0a1f44',
     padding: '28px 20px 22px',
@@ -496,7 +515,6 @@ const styles = {
     letterSpacing: '0.3px',
   },
 
-  // ---------- পপআপ ----------
   popupOverlay: {
     position: 'fixed',
     top: 0,
