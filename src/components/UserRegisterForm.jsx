@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 // =====================================================
 // বাংলাদেশের বিভাগ ও জেলা ডেটা
@@ -95,13 +95,8 @@ const thanasByDistrict = {
 // শিক্ষাগত যোগ্যতার তালিকা
 // =====================================================
 const educationLevels = [
-  'PSC',
-  'JSC',
-  'SSC',
-  'HSC',
-  'ডিপ্লোমা',
-  'স্নাতক (Graduation)',
-  'স্নাতকোত্তর (Masters)',
+  'PSC', 'JSC', 'SSC', 'HSC', 'ডিপ্লোমা',
+  'স্নাতক (Graduation)', 'স্নাতকোত্তর (Masters)',
   'শিক্ষাগত যোগ্যতা নাই'
 ]
 
@@ -143,9 +138,17 @@ function UserRegisterForm({ onClose }) {
     mobile: '',
     email: ''
   })
-  // NID অথবা জন্মনিবন্ধন — যেকোনো একটি
-  const [idType, setIdType] = useState('')  // 'nid' বা 'birth'
-  const [idImage, setIdImage] = useState(null)  // { file, preview, name }
+  const [idType, setIdType] = useState('')
+  const [idImage, setIdImage] = useState(null)
+
+  // Step 4 ডেটা (OTP)
+  const [otp, setOtp] = useState(['', '', '', '', '', ''])
+  const [otpTimer, setOtpTimer] = useState(0)
+  const [resendDisabled, setResendDisabled] = useState(false)
+  const [otpVerified, setOtpVerified] = useState(false)
+
+  // ডেভেলপমেন্ট টেস্টিং কোড
+  const [devOtpCode] = useState('123456')
 
   // থানা সার্চ
   const [thanaSearch, setThanaSearch] = useState('')
@@ -153,6 +156,18 @@ function UserRegisterForm({ onClose }) {
 
   // Error
   const [errors, setErrors] = useState({})
+
+  // ---------- OTP টাইমার ----------
+  useEffect(() => {
+    if (otpTimer <= 0) {
+      if (resendDisabled) setResendDisabled(false)
+      return
+    }
+    const timer = setTimeout(() => {
+      setOtpTimer((prev) => prev - 1)
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [otpTimer, resendDisabled])
 
   // ---------- Step 1 হ্যান্ডলার ----------
   const handleChange = (field, value) => {
@@ -219,7 +234,6 @@ function UserRegisterForm({ onClose }) {
 
   // ---------- Step 3 হ্যান্ডলার ----------
   const handleContactChange = (field, value) => {
-    // মোবাইল নাম্বারে শুধু সংখ্যা
     if (field === 'mobile') {
       value = value.replace(/\D/g, '').slice(0, 11)
     }
@@ -231,6 +245,7 @@ function UserRegisterForm({ onClose }) {
     setIdType(type)
     setIdImage(null)
     if (errors.idImage) setErrors((prev) => ({ ...prev, idImage: '' }))
+    if (errors.idType) setErrors((prev) => ({ ...prev, idType: '' }))
   }
 
   const handleAddIdImage = (file) => {
@@ -257,7 +272,7 @@ function UserRegisterForm({ onClose }) {
   }
 
   // ---------- Step 1 → Step 2 ----------
-  const validateStep1 = () => {
+  const handleNextFromStep1 = () => {
     const newErrors = {}
     if (!formData.name.trim()) newErrors.name = 'আপনার নাম লিখুন'
     if (!formData.fatherName.trim()) newErrors.fatherName = 'বাবার নাম লিখুন'
@@ -266,11 +281,7 @@ function UserRegisterForm({ onClose }) {
     if (!formData.district) newErrors.district = 'জেলা নির্বাচন করুন'
     if (!formData.thana) newErrors.thana = 'থানা নির্বাচন করুন'
     if (!formData.village.trim()) newErrors.village = 'গ্রামের নাম লিখুন'
-    return newErrors
-  }
 
-  const handleNextFromStep1 = () => {
-    const newErrors = validateStep1()
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       const firstError = Object.keys(newErrors)[0]
@@ -318,28 +329,35 @@ function UserRegisterForm({ onClose }) {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // ---------- Step 3 → Step 4 (কনফার্ম) ----------
+  // ---------- Step 3 → Step 4 (OTP স্ক্রিন) ----------
+  const goToStep4 = () => {
+    setErrors({})
+    setCurrentStep(4)
+    setOtp(['', '', '', '', '', ''])
+    setOtpVerified(false)
+    setOtpTimer(60)
+    setResendDisabled(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  // ---------- Step 3 কনফার্ম ----------
   const handleConfirmFromStep3 = () => {
     const newErrors = {}
 
-    // পরিচয়পত্র — যেকোনো একটি
     if (!idType) {
       newErrors.idType = 'NID অথবা জন্মনিবন্ধন যেকোনো একটি নির্বাচন করুন'
     } else if (!idImage) {
-      newErrors.idImage =
-        idType === 'nid'
-          ? 'NID কার্ডের ছবি আপলোড করুন'
-          : 'জন্মনিবন্ধনের ছবি আপলোড করুন'
+      newErrors.idImage = idType === 'nid'
+        ? 'NID কার্ডের ছবি আপলোড করুন'
+        : 'জন্মনিবন্ধনের ছবি আপলোড করুন'
     }
 
-    // মোবাইল
     if (!contact.mobile.trim()) {
       newErrors.mobile = 'মোবাইল নাম্বার দিন'
     } else if (!/^01[3-9]\d{8}$/.test(contact.mobile)) {
       newErrors.mobile = 'সঠিক ১১ ডিজিটের মোবাইল নাম্বার দিন (যেমন: 01712345678)'
     }
 
-    // জিমেইল
     if (!contact.email.trim()) {
       newErrors.email = 'জিমেইল এড্রেস দিন'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) {
@@ -355,10 +373,61 @@ function UserRegisterForm({ onClose }) {
     }
 
     setErrors({})
-    alert(
-      `✅ আপনার তথ্য যাচাই সম্পন্ন!\n\nপরের ধাপে আপনার জিমেইলে (${contact.email}) ৬ সংখ্যার একটি ভেরিফিকেশন কোড পাঠানো হবে।\n\nএই OTP সিস্টেম পরের সাব-স্টেপে যুক্ত হবে (EmailJS সেটআপ সহ)।`
-    )
-    // setCurrentStep(4)  ← পরের ধাপে চালু করব
+    goToStep4()
+  }
+
+  // ---------- Step 4 → Step 3 ----------
+  const handleBackFromStep4 = () => {
+    setErrors({})
+    setCurrentStep(3)
+    setOtpTimer(0)
+    setResendDisabled(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  // ---------- OTP ইনপুট ----------
+  const handleOtpChange = (index, value) => {
+    if (value && !/^\d$/.test(value)) return
+    const newOtp = [...otp]
+    newOtp[index] = value
+    setOtp(newOtp)
+    if (errors.otp) setErrors((prev) => ({ ...prev, otp: '' }))
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`)
+      if (nextInput) nextInput.focus()
+    }
+  }
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-${index - 1}`)
+      if (prevInput) prevInput.focus()
+    }
+  }
+
+  // ---------- রিসেন্ড ----------
+  const handleResendOtp = () => {
+    if (resendDisabled) return
+    setOtp(['', '', '', '', '', ''])
+    setOtpTimer(60)
+    setResendDisabled(true)
+    setOtpVerified(false)
+    alert('নতুন কোড পাঠানো হয়েছে (ডেমো)। পরের ধাপে EmailJS যুক্ত হলে আসল কোড আসবে।')
+  }
+
+  // ---------- OTP ভেরিফাই ----------
+  const handleVerifyOtp = () => {
+    const code = otp.join('')
+    if (code.length !== 6) {
+      setErrors({ otp: 'সম্পূর্ণ ৬ সংখ্যার কোড দিন' })
+      return
+    }
+    if (code !== devOtpCode) {
+      setErrors({ otp: 'ভুল কোড! আবার চেষ্টা করুন। (ডেমো কোড: 123456)' })
+      return
+    }
+    setErrors({})
+    setOtpVerified(true)
   }
 
   // =====================================================
@@ -381,7 +450,11 @@ function UserRegisterForm({ onClose }) {
           <div
             style={{
               ...styles.progressFill,
-              width: currentStep === 1 ? '25%' : currentStep === 2 ? '50%' : '75%'
+              width:
+                currentStep === 1 ? '25%'
+                : currentStep === 2 ? '50%'
+                : currentStep === 3 ? '75%'
+                : '100%'
             }}
           ></div>
         </div>
@@ -389,6 +462,7 @@ function UserRegisterForm({ onClose }) {
           {currentStep === 1 && 'ধাপ ১ / ৪ — ব্যক্তিগত তথ্য'}
           {currentStep === 2 && 'ধাপ ২ / ৪ — শিক্ষাগত যোগ্যতা'}
           {currentStep === 3 && 'ধাপ ৩ / ৪ — পরিচয়পত্র ও যোগাযোগ'}
+          {currentStep === 4 && 'ধাপ ৪ / ৪ — ইমেইল ভেরিফিকেশন'}
         </p>
       </div>
 
@@ -646,20 +720,14 @@ function UserRegisterForm({ onClose }) {
       {/* ================================================= */}
       {currentStep === 3 && (
         <div style={styles.body}>
-          {/* পরিচয়পত্র নির্বাচন */}
           <div style={styles.field} id="field-idType">
-            <label style={styles.label}>
-              পরিচয়পত্র <span style={styles.required}>*</span>
-            </label>
+            <label style={styles.label}>পরিচয়পত্র <span style={styles.required}>*</span></label>
             <p style={styles.helperText}>NID কার্ড অথবা জন্মনিবন্ধন — যেকোনো একটি নির্বাচন করুন</p>
 
             <div style={styles.idTypeRow}>
               <button
                 type="button"
-                style={{
-                  ...styles.idTypeBtn,
-                  ...(idType === 'nid' ? styles.idTypeBtnActive : {})
-                }}
+                style={{ ...styles.idTypeBtn, ...(idType === 'nid' ? styles.idTypeBtnActive : {}) }}
                 onClick={() => handleIdTypeChange('nid')}
               >
                 <span style={styles.idTypeIcon}>🪪</span>
@@ -668,10 +736,7 @@ function UserRegisterForm({ onClose }) {
 
               <button
                 type="button"
-                style={{
-                  ...styles.idTypeBtn,
-                  ...(idType === 'birth' ? styles.idTypeBtnActive : {})
-                }}
+                style={{ ...styles.idTypeBtn, ...(idType === 'birth' ? styles.idTypeBtnActive : {}) }}
                 onClick={() => handleIdTypeChange('birth')}
               >
                 <span style={styles.idTypeIcon}>📜</span>
@@ -681,7 +746,6 @@ function UserRegisterForm({ onClose }) {
             {errors.idType && <p style={styles.errorText}>{errors.idType}</p>}
           </div>
 
-          {/* পরিচয়পত্রের ছবি — যেকোনো একটি নির্বাচনের পরেই দেখাবে */}
           {idType && (
             <div style={styles.field} id="field-idImage">
               <label style={styles.label}>
@@ -729,11 +793,8 @@ function UserRegisterForm({ onClose }) {
             </div>
           )}
 
-          {/* মোবাইল নাম্বার */}
           <div style={styles.field} id="field-mobile">
-            <label style={styles.label}>
-              মোবাইল নাম্বার <span style={styles.required}>*</span>
-            </label>
+            <label style={styles.label}>মোবাইল নাম্বার <span style={styles.required}>*</span></label>
             <input
               type="tel"
               inputMode="numeric"
@@ -746,11 +807,8 @@ function UserRegisterForm({ onClose }) {
             {errors.mobile && <p style={styles.errorText}>{errors.mobile}</p>}
           </div>
 
-          {/* জিমেইল */}
           <div style={styles.field} id="field-email">
-            <label style={styles.label}>
-              জিমেইল এড্রেস <span style={styles.required}>*</span>
-            </label>
+            <label style={styles.label}>জিমেইল এড্রেস <span style={styles.required}>*</span></label>
             <input
               type="email"
               inputMode="email"
@@ -762,6 +820,80 @@ function UserRegisterForm({ onClose }) {
             <p style={styles.helperText}>আপনার একটি সচল জিমেইল দিন (এখানেই ভেরিফিকেশন কোড পাঠানো হবে)</p>
             {errors.email && <p style={styles.errorText}>{errors.email}</p>}
           </div>
+        </div>
+      )}
+
+      {/* ================================================= */}
+      {/* Step 4: OTP ভেরিফিকেশন */}
+      {/* ================================================= */}
+      {currentStep === 4 && (
+        <div style={styles.body}>
+          <div style={styles.otpSuccessIcon}>
+            <span style={styles.otpSuccessIconText}>✉️</span>
+          </div>
+
+          <div style={styles.otpMessageBox}>
+            <h3 style={styles.otpMessageTitle}>আপনার জিমেইলে কোড পাঠানো হয়েছে</h3>
+            <p style={styles.otpMessageText}>
+              আমরা <strong style={styles.otpMessageEmail}>{contact.email}</strong> ঠিকানায় ৬ সংখ্যার একটি ভেরিফিকেশন কোড পাঠিয়েছি।
+            </p>
+            <p style={styles.otpMessageHint}>
+              (ডেমো মোডে আছি — পরীক্ষার জন্য কোড ব্যবহার করুন: <strong>123456</strong>)
+            </p>
+          </div>
+
+          <div style={styles.field} id="field-otp">
+            <label style={styles.label}>ভেরিফিকেশন কোড লিখুন <span style={styles.required}>*</span></label>
+            <div style={styles.otpRow}>
+              {otp.map((digit, index) => (
+                <input
+                  key={index}
+                  id={`otp-${index}`}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  style={{
+                    ...styles.otpInput,
+                    ...(errors.otp ? styles.otpInputError : {}),
+                    ...(digit ? styles.otpInputFilled : {})
+                  }}
+                  value={digit}
+                  onChange={(e) => handleOtpChange(index, e.target.value)}
+                  onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                  disabled={otpVerified}
+                />
+              ))}
+            </div>
+            {errors.otp && <p style={styles.errorText}>{errors.otp}</p>}
+          </div>
+
+          <div style={styles.otpTimerRow}>
+            {!resendDisabled ? (
+              <button
+                type="button"
+                style={styles.resendBtn}
+                onClick={handleResendOtp}
+              >
+                🔄 কোড পুনরায় পাঠান
+              </button>
+            ) : (
+              <p style={styles.otpTimerText}>
+                পুনরায় পাঠাতে অপেক্ষা করুন: <strong>{otpTimer} সেকেন্ড</strong>
+              </p>
+            )}
+          </div>
+
+          {otpVerified && (
+            <div style={styles.verifiedBox}>
+              <div style={styles.verifiedIcon}>✓</div>
+              <div>
+                <p style={styles.verifiedTitle}>সফলভাবে ভেরিফিকেশন সম্পন্ন!</p>
+                <p style={styles.verifiedText}>
+                  আপনার অ্যাকাউন্ট তৈরি প্রায় সম্পন্ন। পরের ধাপে আমরা Supabase-এ তথ্য সংরক্ষণ করব।
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -782,6 +914,25 @@ function UserRegisterForm({ onClose }) {
           <div style={styles.footerRow}>
             <button style={styles.btnBack} onClick={handleBackFromStep3}>← পূর্ববর্তী</button>
             <button style={styles.btnConfirm} onClick={handleConfirmFromStep3}>কনফার্ম করুন</button>
+          </div>
+        )}
+
+        {currentStep === 4 && (
+          <div style={styles.footerRow}>
+            {!otpVerified && (
+              <>
+                <button style={styles.btnBack} onClick={handleBackFromStep4}>← পূর্ববর্তী</button>
+                <button style={styles.btnConfirm} onClick={handleVerifyOtp}>ভেরিফাই করুন</button>
+              </>
+            )}
+            {otpVerified && (
+              <button
+                style={styles.btnNext}
+                onClick={() => alert('অ্যাকাউন্ট সংরক্ষণ পরের ধাপে যুক্ত হবে (Supabase)।')}
+              >
+                অ্যাকাউন্ট তৈরি সম্পন্ন করুন →
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -944,7 +1095,7 @@ const styles = {
     lineHeight: 1.2,
   },
   singlePreviewWrapper: {
-    position: 'relative', width: '100%', maxWidth: '240px',
+    position: 'relative', width: '100%', maxWidth: '260px',
     aspectRatio: '16 / 10', borderRadius: '12px',
     overflow: 'hidden', background: '#f0f2f6',
     border: '1.5px solid #e2e6ee',
@@ -1019,6 +1170,112 @@ const styles = {
   idTypeIcon: { fontSize: '24px' },
   idTypeLabel: {
     fontSize: '13px', fontWeight: 600, color: '#0a1f44',
+    fontFamily: "'Hind Siliguri', sans-serif",
+  },
+  otpSuccessIcon: {
+    width: '90px', height: '90px', borderRadius: '50%',
+    background: 'linear-gradient(135deg, #d4a537, #e6c267)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    margin: '8px auto 4px',
+    boxShadow: '0 8px 24px rgba(212, 165, 55, 0.35)',
+  },
+  otpSuccessIconText: { fontSize: '42px' },
+  otpMessageBox: {
+    background: '#ffffff', borderRadius: '16px',
+    padding: '20px 18px', textAlign: 'center',
+    boxShadow: '0 4px 14px rgba(10, 31, 68, 0.08)',
+    borderTop: '4px solid #d4a537',
+  },
+  otpMessageTitle: {
+    fontSize: '16px', fontWeight: 700, color: '#0a1f44',
+    margin: 0, marginBottom: '10px', lineHeight: 1.4,
+    fontFamily: "'Hind Siliguri', sans-serif",
+  },
+  otpMessageText: {
+    fontSize: '13.5px', color: '#3a4152',
+    margin: 0, marginBottom: '10px', lineHeight: 1.7,
+    fontFamily: "'Hind Siliguri', sans-serif",
+  },
+  otpMessageEmail: {
+    color: '#0a1f44', fontWeight: 700,
+    fontFamily: "'Poppins', sans-serif",
+    wordBreak: 'break-all',
+  },
+  otpMessageHint: {
+    fontSize: '12px', color: '#8a6a1f',
+    background: 'rgba(212, 165, 55, 0.12)',
+    padding: '8px 10px', borderRadius: '8px',
+    margin: 0, lineHeight: 1.5,
+    fontFamily: "'Hind Siliguri', sans-serif",
+  },
+  otpRow: {
+    display: 'flex', gap: '8px', justifyContent: 'space-between',
+    marginTop: '6px',
+  },
+  otpInput: {
+    flex: 1, minWidth: 0,
+    aspectRatio: '1 / 1',
+    maxWidth: '60px',
+    textAlign: 'center',
+    fontSize: '22px', fontWeight: 700,
+    fontFamily: "'Poppins', sans-serif",
+    color: '#0a1f44',
+    borderRadius: '12px',
+    border: '2px solid #e2e6ee',
+    background: '#ffffff',
+    outline: 'none',
+    transition: 'all 0.2s ease',
+    padding: 0,
+  },
+  otpInputError: {
+    borderColor: '#d93636', background: '#fff5f5',
+  },
+  otpInputFilled: {
+    borderColor: '#d4a537',
+    background: 'rgba(212, 165, 55, 0.08)',
+    boxShadow: '0 4px 12px rgba(212, 165, 55, 0.20)',
+  },
+  otpTimerRow: {
+    display: 'flex', justifyContent: 'center',
+    alignItems: 'center', marginTop: '4px',
+  },
+  otpTimerText: {
+    fontSize: '12.5px', color: '#5a6472',
+    margin: 0, fontFamily: "'Hind Siliguri', sans-serif",
+    textAlign: 'center',
+  },
+  resendBtn: {
+    padding: '10px 18px', borderRadius: '10px',
+    background: 'rgba(212, 165, 55, 0.10)',
+    color: '#0a1f44',
+    fontSize: '13px', fontWeight: 600,
+    fontFamily: "'Hind Siliguri', sans-serif",
+    border: '1.5px solid #d4a537',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+  },
+  verifiedBox: {
+    display: 'flex', alignItems: 'flex-start', gap: '12px',
+    background: 'rgba(30, 157, 90, 0.10)',
+    border: '1.5px solid rgba(30, 157, 90, 0.35)',
+    borderRadius: '14px',
+    padding: '16px',
+    marginTop: '8px',
+  },
+  verifiedIcon: {
+    width: '32px', height: '32px', borderRadius: '50%',
+    background: '#1e9d5a', color: '#ffffff',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: '18px', fontWeight: 700, flexShrink: 0,
+  },
+  verifiedTitle: {
+    fontSize: '14px', fontWeight: 700, color: '#1e9d5a',
+    margin: 0, marginBottom: '4px',
+    fontFamily: "'Hind Siliguri', sans-serif",
+  },
+  verifiedText: {
+    fontSize: '12.5px', color: '#3a4152',
+    margin: 0, lineHeight: 1.6,
     fontFamily: "'Hind Siliguri', sans-serif",
   },
   footer: {
