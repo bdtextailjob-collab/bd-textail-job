@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import emailjs from '@emailjs/browser'
 
 // =====================================================
 // বাংলাদেশের বিভাগ ও জেলা ডেটা
@@ -147,8 +148,12 @@ function UserRegisterForm({ onClose }) {
   const [resendDisabled, setResendDisabled] = useState(false)
   const [otpVerified, setOtpVerified] = useState(false)
 
-  // ডেভেলপমেন্ট টেস্টিং কোড
-  const [devOtpCode] = useState('123456')
+  // সত্যিকারের OTP কোড (EmailJS থেকে জেনারেট হয়ে জিমেইলে যাবে)
+  const [generatedOtp, setGeneratedOtp] = useState('')
+
+  // ইমেইল পাঠানোর অবস্থা
+  const [sendingOtp, setSendingOtp] = useState(false)
+  const [sendError, setSendError] = useState('')
 
   // থানা সার্চ
   const [thanaSearch, setThanaSearch] = useState('')
@@ -156,6 +161,43 @@ function UserRegisterForm({ onClose }) {
 
   // Error
   const [errors, setErrors] = useState({})
+
+  // ---------- ৬ সংখ্যার র্যান্ডম OTP তৈরি ----------
+  const generateOtp = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString()
+  }
+
+  // ---------- EmailJS দিয়ে OTP পাঠানো ----------
+  const sendOtpEmail = async (otpCode, email, name) => {
+    setSendingOtp(true)
+    setSendError('')
+
+    try {
+      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID
+      const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID
+      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+
+      if (!serviceId || !templateId || !publicKey) {
+        throw new Error('EmailJS সেটিংস পাওয়া যায়নি। Environment Variables ঠিকভাবে সেট করা হয়নি।')
+      }
+
+      const templateParams = {
+        to_email: email,
+        user_name: name || 'ব্যবহারকারী',
+        otp_code: otpCode
+      }
+
+      await emailjs.send(serviceId, templateId, templateParams, publicKey)
+
+      setSendingOtp(false)
+      return true
+    } catch (err) {
+      console.error('EmailJS Error:', err)
+      setSendingOtp(false)
+      setSendError(err?.text || err?.message || 'ইমেইল পাঠাতে সমস্যা হয়েছে।')
+      return false
+    }
+  }
 
   // ---------- OTP টাইমার ----------
   useEffect(() => {
@@ -330,14 +372,24 @@ function UserRegisterForm({ onClose }) {
   }
 
   // ---------- Step 3 → Step 4 (OTP স্ক্রিন) ----------
-  const goToStep4 = () => {
+  const goToStep4 = async () => {
     setErrors({})
+    setSendError('')
+
+    // নতুন OTP তৈরি
+    const newOtp = generateOtp()
+    setGeneratedOtp(newOtp)
+
+    // Step 4 স্ক্রিনে যাওয়া
     setCurrentStep(4)
     setOtp(['', '', '', '', '', ''])
     setOtpVerified(false)
     setOtpTimer(60)
     setResendDisabled(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
+
+    // জিমেইলে পাঠানো
+    await sendOtpEmail(newOtp, contact.email, formData.name)
   }
 
   // ---------- Step 3 কনফার্ম ----------
@@ -406,13 +458,19 @@ function UserRegisterForm({ onClose }) {
   }
 
   // ---------- রিসেন্ড ----------
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     if (resendDisabled) return
+
+    const newOtp = generateOtp()
+    setGeneratedOtp(newOtp)
+
     setOtp(['', '', '', '', '', ''])
     setOtpTimer(60)
     setResendDisabled(true)
     setOtpVerified(false)
-    alert('নতুন কোড পাঠানো হয়েছে (ডেমো)। পরের ধাপে EmailJS যুক্ত হলে আসল কোড আসবে।')
+    setSendError('')
+
+    await sendOtpEmail(newOtp, contact.email, formData.name)
   }
 
   // ---------- OTP ভেরিফাই ----------
@@ -422,8 +480,8 @@ function UserRegisterForm({ onClose }) {
       setErrors({ otp: 'সম্পূর্ণ ৬ সংখ্যার কোড দিন' })
       return
     }
-    if (code !== devOtpCode) {
-      setErrors({ otp: 'ভুল কোড! আবার চেষ্টা করুন। (ডেমো কোড: 123456)' })
+    if (code !== generatedOtp) {
+      setErrors({ otp: 'ভুল কোড! আবার চেষ্টা করুন।' })
       return
     }
     setErrors({})
@@ -837,9 +895,22 @@ function UserRegisterForm({ onClose }) {
             <p style={styles.otpMessageText}>
               আমরা <strong style={styles.otpMessageEmail}>{contact.email}</strong> ঠিকানায় ৬ সংখ্যার একটি ভেরিফিকেশন কোড পাঠিয়েছি।
             </p>
-            <p style={styles.otpMessageHint}>
-              (ডেমো মোডে আছি — পরীক্ষার জন্য কোড ব্যবহার করুন: <strong>123456</strong>)
-            </p>
+
+            {sendingOtp && (
+              <p style={styles.otpMessageHint}>
+                ⏳ ইমেইল পাঠানো হচ্ছে...
+              </p>
+            )}
+            {!sendingOtp && sendError && (
+              <p style={styles.otpMessageError}>
+                ⚠️ {sendError}
+              </p>
+            )}
+            {!sendingOtp && !sendError && (
+              <p style={styles.otpMessageHint}>
+                ✓ জিমেইল চেক করে কোডটি লিখুন। স্প্যাম ফোল্ডারেও দেখুন।
+              </p>
+            )}
           </div>
 
           <div style={styles.field} id="field-otp">
@@ -873,6 +944,7 @@ function UserRegisterForm({ onClose }) {
                 type="button"
                 style={styles.resendBtn}
                 onClick={handleResendOtp}
+                disabled={sendingOtp}
               >
                 🔄 কোড পুনরায় পাঠান
               </button>
@@ -1204,6 +1276,13 @@ const styles = {
   otpMessageHint: {
     fontSize: '12px', color: '#8a6a1f',
     background: 'rgba(212, 165, 55, 0.12)',
+    padding: '8px 10px', borderRadius: '8px',
+    margin: 0, lineHeight: 1.5,
+    fontFamily: "'Hind Siliguri', sans-serif",
+  },
+  otpMessageError: {
+    fontSize: '12px', color: '#b3261e',
+    background: 'rgba(217, 54, 54, 0.10)',
     padding: '8px 10px', borderRadius: '8px',
     margin: 0, lineHeight: 1.5,
     fontFamily: "'Hind Siliguri', sans-serif",
