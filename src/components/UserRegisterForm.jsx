@@ -151,6 +151,9 @@ function UserRegisterForm({ onClose }) {
   const [resendDisabled, setResendDisabled] = useState(false)
   const [otpVerified, setOtpVerified] = useState(false)
 
+  // সফল পপআপ দেখানোর জন্য
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false)
+
   const [generatedOtp, setGeneratedOtp] = useState('')
   const [sendingOtp, setSendingOtp] = useState(false)
   const [sendError, setSendError] = useState('')
@@ -164,18 +167,15 @@ function UserRegisterForm({ onClose }) {
   // ---------- নিজের ছবি হ্যান্ডলার ----------
   const handleAddProfileImage = (file) => {
     if (!file) return
-
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png']
     if (!allowedTypes.includes(file.type)) {
       alert('শুধু JPG অথবা PNG ফাইল আপলোড করতে পারবেন।')
       return
     }
-
     if (file.size > 5 * 1024 * 1024) {
       alert('ছবির সাইজ সর্বোচ্চ ৫ MB হতে পারবে।')
       return
     }
-
     const reader = new FileReader()
     reader.onloadend = () => {
       setProfileImage({ file, preview: reader.result, name: file.name })
@@ -510,6 +510,14 @@ function UserRegisterForm({ onClose }) {
     }
     setErrors({})
     setOtpVerified(true)
+    // সফল পপআপ দেখাও
+    setShowSuccessPopup(true)
+  }
+
+  // ---------- সফল পপআপ বন্ধ করে হোমে ফেরা ----------
+  const handleCloseSuccessPopup = () => {
+    setShowSuccessPopup(false)
+    onClose()  // ফরম বন্ধ করে হোমপেজে ফেরা
   }
 
   // =====================================================
@@ -553,7 +561,6 @@ function UserRegisterForm({ onClose }) {
       {/* ================================================= */}
       {currentStep === 1 && (
         <div style={styles.body}>
-          {/* নিজের ছবি */}
           <div style={styles.field} id="field-profileImage">
             <label style={styles.label}>
               আপনার নিজের ছবি <span style={styles.required}>*</span>
@@ -563,11 +570,7 @@ function UserRegisterForm({ onClose }) {
             <div style={styles.profileImageWrapper}>
               {profileImage ? (
                 <div style={styles.profileImageContainer}>
-                  <img
-                    src={profileImage.preview}
-                    alt="আপনার ছবি"
-                    style={styles.profileImagePreview}
-                  />
+                  <img src={profileImage.preview} alt="আপনার ছবি" style={styles.profileImagePreview} />
                   <button
                     type="button"
                     style={styles.profileImageRemoveBtn}
@@ -1070,6 +1073,43 @@ function UserRegisterForm({ onClose }) {
         )}
       </div>
 
+      {/* ================================================= */}
+      {/* সফল পপআপ */}
+      {/* ================================================= */}
+      {showSuccessPopup && (
+        <div style={styles.successOverlay}>
+          <div style={styles.successBox}>
+            {/* সোনালি ✓ আইকন */}
+            <div style={styles.successIconWrapper}>
+              <div style={styles.successIcon}>✓</div>
+            </div>
+
+            {/* শিরোনাম */}
+            <h2 style={styles.successTitle}>অভিনন্দন!</h2>
+
+            {/* বার্তা */}
+            <p style={styles.successMessage}>
+              আপনার ভেরিফিকেশন সঠিকভাবে সম্পন্ন হয়েছে।
+            </p>
+
+            <p style={styles.successDetail}>
+              আপনার অ্যাকাউন্টটি <strong>সাপোর্ট টিম</strong> পর্যবেক্ষণ করছেন। অনুগ্রহ করে অপেক্ষা করুন — ২৪ ঘণ্টার মধ্যে <strong>কনফার্মেশন SMS</strong> দিয়ে আপনাকে জানানো হবে।
+            </p>
+
+            <div style={styles.successDivider}></div>
+
+            <p style={styles.successNote}>
+              ধন্যবাদ! BD Textail Job-এর সাথে থাকার জন্য।
+            </p>
+
+            {/* ঠিক আছে বাটন */}
+            <button style={styles.successBtn} onClick={handleCloseSuccessPopup}>
+              ঠিক আছে
+            </button>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes formFadeIn {
           from { opacity: 0; transform: translateY(8px); }
@@ -1078,6 +1118,19 @@ function UserRegisterForm({ onClose }) {
         @keyframes dropdownIn {
           from { opacity: 0; transform: translateY(-4px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes successOverlayIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes successBoxIn {
+          from { opacity: 0; transform: translateY(24px) scale(0.96); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes successIconPop {
+          0% { transform: scale(0); opacity: 0; }
+          60% { transform: scale(1.15); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
         }
       `}</style>
     </div>
@@ -1539,6 +1592,104 @@ const styles = {
     fontFamily: "'Hind Siliguri', sans-serif",
     border: '2px solid #0a1f44', cursor: 'pointer',
     letterSpacing: '0.3px',
+  },
+
+  // ---------- সফল পপআপ স্টাইল ----------
+  successOverlay: {
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    background: 'rgba(10, 31, 68, 0.75)',
+    backdropFilter: 'blur(6px)',
+    WebkitBackdropFilter: 'blur(6px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '20px',
+    zIndex: 9999,
+    animation: 'successOverlayIn 0.3s ease-out',
+  },
+  successBox: {
+    width: '100%',
+    maxWidth: '400px',
+    background: '#ffffff',
+    borderRadius: '24px',
+    padding: '32px 24px 24px',
+    textAlign: 'center',
+    boxShadow: '0 24px 60px rgba(0, 0, 0, 0.35)',
+    animation: 'successBoxIn 0.4s ease-out',
+  },
+  successIconWrapper: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: '18px',
+  },
+  successIcon: {
+    width: '88px',
+    height: '88px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #d4a537, #e6c267)',
+    color: '#ffffff',
+    fontSize: '46px',
+    fontWeight: 700,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 10px 30px rgba(212, 165, 55, 0.45)',
+    animation: 'successIconPop 0.5s ease-out 0.15s both',
+  },
+  successTitle: {
+    fontSize: '24px',
+    fontWeight: 700,
+    color: '#0a1f44',
+    margin: 0,
+    marginBottom: '12px',
+    fontFamily: "'Hind Siliguri', sans-serif",
+  },
+  successMessage: {
+    fontSize: '15px',
+    color: '#0a1f44',
+    fontWeight: 600,
+    margin: 0,
+    marginBottom: '14px',
+    lineHeight: 1.6,
+    fontFamily: "'Hind Siliguri', sans-serif",
+  },
+  successDetail: {
+    fontSize: '13.5px',
+    color: '#3a4152',
+    margin: 0,
+    marginBottom: '18px',
+    lineHeight: 1.75,
+    fontFamily: "'Hind Siliguri', sans-serif",
+  },
+  successDivider: {
+    width: '60px',
+    height: '2px',
+    background: 'linear-gradient(90deg, transparent, #d4a537, transparent)',
+    margin: '0 auto 14px',
+    borderRadius: '2px',
+  },
+  successNote: {
+    fontSize: '12.5px',
+    color: '#5a6472',
+    margin: 0,
+    marginBottom: '20px',
+    fontFamily: "'Hind Siliguri', sans-serif",
+    fontStyle: 'italic',
+  },
+  successBtn: {
+    width: '100%',
+    padding: '15px 20px',
+    borderRadius: '14px',
+    background: 'linear-gradient(135deg, #0a1f44, #16346b)',
+    color: '#ffffff',
+    fontSize: '16px',
+    fontWeight: 700,
+    fontFamily: "'Hind Siliguri', sans-serif",
+    border: 'none',
+    cursor: 'pointer',
+    boxShadow: '0 6px 18px rgba(10, 31, 68, 0.30)',
+    letterSpacing: '0.5px',
   },
 }
 
