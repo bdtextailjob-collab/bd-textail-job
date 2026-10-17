@@ -126,6 +126,9 @@ function UserRegisterForm({ onClose }) {
     village: ''
   })
 
+  // নিজের ছবি
+  const [profileImage, setProfileImage] = useState(null)
+
   // Step 2 ডেটা
   const [education, setEducation] = useState({
     level: '',
@@ -148,10 +151,7 @@ function UserRegisterForm({ onClose }) {
   const [resendDisabled, setResendDisabled] = useState(false)
   const [otpVerified, setOtpVerified] = useState(false)
 
-  // সত্যিকারের OTP কোড (EmailJS থেকে জেনারেট হয়ে জিমেইলে যাবে)
   const [generatedOtp, setGeneratedOtp] = useState('')
-
-  // ইমেইল পাঠানোর অবস্থা
   const [sendingOtp, setSendingOtp] = useState(false)
   const [sendError, setSendError] = useState('')
 
@@ -159,8 +159,34 @@ function UserRegisterForm({ onClose }) {
   const [thanaSearch, setThanaSearch] = useState('')
   const [showThanaDropdown, setShowThanaDropdown] = useState(false)
 
-  // Error
   const [errors, setErrors] = useState({})
+
+  // ---------- নিজের ছবি হ্যান্ডলার ----------
+  const handleAddProfileImage = (file) => {
+    if (!file) return
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png']
+    if (!allowedTypes.includes(file.type)) {
+      alert('শুধু JPG অথবা PNG ফাইল আপলোড করতে পারবেন।')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('ছবির সাইজ সর্বোচ্চ ৫ MB হতে পারবে।')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setProfileImage({ file, preview: reader.result, name: file.name })
+      if (errors.profileImage) setErrors((prev) => ({ ...prev, profileImage: '' }))
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemoveProfileImage = () => {
+    setProfileImage(null)
+  }
 
   // ---------- ৬ সংখ্যার র্যান্ডম OTP তৈরি ----------
   const generateOtp = () => {
@@ -316,6 +342,7 @@ function UserRegisterForm({ onClose }) {
   // ---------- Step 1 → Step 2 ----------
   const handleNextFromStep1 = () => {
     const newErrors = {}
+    if (!profileImage) newErrors.profileImage = 'আপনার নিজের ছবি আপলোড করুন'
     if (!formData.name.trim()) newErrors.name = 'আপনার নাম লিখুন'
     if (!formData.fatherName.trim()) newErrors.fatherName = 'বাবার নাম লিখুন'
     if (!formData.motherName.trim()) newErrors.motherName = 'মায়ের নাম লিখুন'
@@ -376,11 +403,9 @@ function UserRegisterForm({ onClose }) {
     setErrors({})
     setSendError('')
 
-    // নতুন OTP তৈরি
     const newOtp = generateOtp()
     setGeneratedOtp(newOtp)
 
-    // Step 4 স্ক্রিনে যাওয়া
     setCurrentStep(4)
     setOtp(['', '', '', '', '', ''])
     setOtpVerified(false)
@@ -388,7 +413,6 @@ function UserRegisterForm({ onClose }) {
     setResendDisabled(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
 
-    // জিমেইলে পাঠানো
     await sendOtpEmail(newOtp, contact.email, formData.name)
   }
 
@@ -529,6 +553,47 @@ function UserRegisterForm({ onClose }) {
       {/* ================================================= */}
       {currentStep === 1 && (
         <div style={styles.body}>
+          {/* নিজের ছবি */}
+          <div style={styles.field} id="field-profileImage">
+            <label style={styles.label}>
+              আপনার নিজের ছবি <span style={styles.required}>*</span>
+            </label>
+            <p style={styles.helperText}>JPG অথবা PNG — সর্বোচ্চ ৫ MB</p>
+
+            <div style={styles.profileImageWrapper}>
+              {profileImage ? (
+                <div style={styles.profileImageContainer}>
+                  <img
+                    src={profileImage.preview}
+                    alt="আপনার ছবি"
+                    style={styles.profileImagePreview}
+                  />
+                  <button
+                    type="button"
+                    style={styles.profileImageRemoveBtn}
+                    onClick={handleRemoveProfileImage}
+                    aria-label="ছবি মুছুন"
+                  >✕</button>
+                </div>
+              ) : (
+                <label style={styles.profileImageAddBtn}>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png"
+                    style={styles.fileInputHidden}
+                    onChange={(e) => {
+                      handleAddProfileImage(e.target.files[0])
+                      e.target.value = ''
+                    }}
+                  />
+                  <span style={styles.profileImageIcon}>+</span>
+                  <span style={styles.profileImageText}>ছবি আপলোড করুন</span>
+                </label>
+              )}
+            </div>
+            {errors.profileImage && <p style={styles.errorText}>{errors.profileImage}</p>}
+          </div>
+
           <div style={styles.field} id="field-name">
             <label style={styles.label}>আপনার নাম <span style={styles.required}>*</span></label>
             <input
@@ -897,14 +962,10 @@ function UserRegisterForm({ onClose }) {
             </p>
 
             {sendingOtp && (
-              <p style={styles.otpMessageHint}>
-                ⏳ ইমেইল পাঠানো হচ্ছে...
-              </p>
+              <p style={styles.otpMessageHint}>⏳ ইমেইল পাঠানো হচ্ছে...</p>
             )}
             {!sendingOtp && sendError && (
-              <p style={styles.otpMessageError}>
-                ⚠️ {sendError}
-              </p>
+              <p style={styles.otpMessageError}>⚠️ {sendError}</p>
             )}
             {!sendingOtp && !sendError && (
               <p style={styles.otpMessageHint}>
@@ -1121,6 +1182,82 @@ const styles = {
     fontSize: '13px', color: '#0a1f44', margin: 0, lineHeight: 1.6,
     fontFamily: "'Hind Siliguri', sans-serif", fontWeight: 500,
   },
+
+  // ---------- নিজের ছবি স্টাইল ----------
+  profileImageWrapper: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginTop: '6px',
+    marginBottom: '4px',
+  },
+  profileImageContainer: {
+    position: 'relative',
+    width: '130px',
+    height: '130px',
+  },
+  profileImagePreview: {
+    width: '130px',
+    height: '130px',
+    borderRadius: '50%',
+    objectFit: 'cover',
+    border: '4px solid #d4a537',
+    boxShadow: '0 6px 18px rgba(212, 165, 55, 0.35)',
+    display: 'block',
+  },
+  profileImageRemoveBtn: {
+    position: 'absolute',
+    top: '0px',
+    right: '0px',
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    background: 'rgba(217, 54, 54, 0.95)',
+    color: '#ffffff',
+    fontSize: '14px',
+    fontWeight: 700,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    border: '2px solid #ffffff',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.30)',
+  },
+  profileImageAddBtn: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    width: '130px',
+    height: '130px',
+    borderRadius: '50%',
+    border: '3px dashed #d4a537',
+    background: 'rgba(212, 165, 55, 0.06)',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+  },
+  profileImageIcon: {
+    width: '44px',
+    height: '44px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #0a1f44, #16346b)',
+    color: '#ffffff',
+    fontSize: '26px',
+    fontWeight: 700,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 4px 10px rgba(10,31,68,0.20)',
+  },
+  profileImageText: {
+    fontSize: '11px',
+    color: '#0a1f44',
+    fontWeight: 600,
+    fontFamily: "'Hind Siliguri', sans-serif",
+    textAlign: 'center',
+    padding: '0 6px',
+  },
+
   thanaWrapper: { position: 'relative' },
   thanaDropdown: {
     position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
