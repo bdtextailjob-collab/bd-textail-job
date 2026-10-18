@@ -1,5 +1,13 @@
 import { useState, useEffect } from 'react'
 import emailjs from '@emailjs/browser'
+import { createClient } from '@supabase/supabase-js'
+
+// =====================================================
+// Supabase ক্লায়েন্ট তৈরি
+// =====================================================
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // =====================================================
 // বাংলাদেশের বিভাগ ও জেলা ডেটা
@@ -157,6 +165,7 @@ function UserRegisterForm({ onClose }) {
   const [generatedOtp, setGeneratedOtp] = useState('')
   const [sendingOtp, setSendingOtp] = useState(false)
   const [sendError, setSendError] = useState('')
+  const [savingData, setSavingData] = useState(false)
 
   // থানা সার্চ
   const [thanaSearch, setThanaSearch] = useState('')
@@ -497,8 +506,34 @@ function UserRegisterForm({ onClose }) {
     await sendOtpEmail(newOtp, contact.email, formData.name)
   }
 
+  // ---------- Supabase-এ ছবি আপলোড ----------
+  const uploadImage = async (file, bucket) => {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`
+    
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      })
+
+    if (error) throw error
+
+    if (bucket === 'profile-images') {
+      // পাবলিক বাকেটের জন্য পাবলিক URL
+      const { data: publicUrlData } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(fileName)
+      return publicUrlData.publicUrl
+    } else {
+      // প্রাইভেট বাকেটের জন্য শুধু ফাইল পাথ রাখব
+      return fileName
+    }
+  }
+
   // ---------- OTP ভেরিফাই ----------
-  const handleVerifyOtp = () => {
+  const handleVerifyOtp = async () => {
     const code = otp.join('')
     if (code.length !== 6) {
       setErrors({ otp: 'সম্পূর্ণ ৬ সংখ্যার কোড দিন' })
@@ -510,8 +545,69 @@ function UserRegisterForm({ onClose }) {
     }
     setErrors({})
     setOtpVerified(true)
-    // সফল পপআপ দেখাও
-    setShowSuccessPopup(true)
+    
+    // ডেটা সেভ শুরু
+    setSavingData(true)
+    
+    try {
+      // ১. প্রোফাইল ছবি আপলোড
+      const profileImageUrl = await uploadImage(profileImage.file, 'profile-images')
+      
+      // ২. সার্টিফিকেট ছবি আপলোড (যদি থাকে)
+      let certificateUrls = []
+      if (certificates.length > 0) {
+        for (const cert of certificates) {
+          const url = await uploadImage(cert.file, 'documents')
+          certificateUrls.push(url)
+        }
+      }
+      
+      // ৩. NID/জন্মনিবন্ধন ছবি আপলোড
+      const idImageUrl = await uploadImage(idImage.file, 'documents')
+      
+      // ৪. Supabase টেবিলে ডেটা সেভ করা
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert([
+          {
+            profile_image_url: profileImageUrl,
+            name: formData.name,
+            father_name: formData.fatherName,
+            mother_name: formData.motherName,
+            division: formData.division,
+            district: formData.district,
+            thana: formData.thana,
+            village: formData.village,
+            education_level: education.level,
+            institution: education.level === 'শিক্ষাগত যোগ্যতা নাই' ? null : education.institution,
+            passing_year: education.level === 'শিক্ষাগত যোগ্যতা নাই' ? null : education.passingYear,
+            certificate_urls: certificateUrls,
+            id_type: idType,
+            id_image_url: idImageUrl,
+            mobile: contact.mobile,
+            email: contact.email,
+            status: 'pending'
+          }
+        ])
+
+      if (insertError) {
+        // যদি ইমেইল অলরেডি থাকে (Unique constraint error)
+        if (insertError.code === '23505') {
+          throw new Error('এই জিমেইল দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট খোলা হয়েছে।')
+        }
+        throw insertError
+      }
+
+      // সব সফল হলে পপআপ দেখাও
+      setSavingData(false)
+      setShowSuccessPopup(true)
+      
+    } catch (err) {
+      console.error('Save Error:', err)
+      setSavingData(false)
+      setOtpVerified(false)
+      setErrors({ otp: err.message || 'তথ্য সেভ করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।' })
+    }
   }
 
   // ---------- সফল পপআপ বন্ধ করে হোমে ফেরা ----------
@@ -995,39 +1091,35 @@ function UserRegisterForm({ onClose }) {
                   value={digit}
                   onChange={(e) => handleOtpChange(index, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                  disabled={otpVerified}
+                  disabled={otpVerified || savingData}
                 />
               ))}
             </div>
             {errors.otp && <p style={styles.errorText}>{errors.otp}</p>}
           </div>
 
-          <div style={styles.otpTimerRow}>
-            {!resendDisabled ? (
-              <button
-                type="button"
-                style={styles.resendBtn}
-                onClick={handleResendOtp}
-                disabled={sendingOtp}
-              >
-                🔄 কোড পুনরায় পাঠান
-              </button>
-            ) : (
-              <p style={styles.otpTimerText}>
-                পুনরায় পাঠাতে অপেক্ষা করুন: <strong>{otpTimer} সেকেন্ড</strong>
-              </p>
-            )}
-          </div>
+          {savingData && (
+            <p style={styles.savingText}>
+              ⏳ আপনার তথ্য সংরক্ষণ করা হচ্ছে...
+            </p>
+          )}
 
-          {otpVerified && (
-            <div style={styles.verifiedBox}>
-              <div style={styles.verifiedIcon}>✓</div>
-              <div>
-                <p style={styles.verifiedTitle}>সফলভাবে ভেরিফিকেশন সম্পন্ন!</p>
-                <p style={styles.verifiedText}>
-                  আপনার অ্যাকাউন্ট তৈরি প্রায় সম্পন্ন। পরের ধাপে আমরা Supabase-এ তথ্য সংরক্ষণ করব।
+          {!savingData && (
+            <div style={styles.otpTimerRow}>
+              {!resendDisabled ? (
+                <button
+                  type="button"
+                  style={styles.resendBtn}
+                  onClick={handleResendOtp}
+                  disabled={sendingOtp}
+                >
+                  🔄 কোড পুনরায় পাঠান
+                </button>
+              ) : (
+                <p style={styles.otpTimerText}>
+                  পুনরায় পাঠাতে অপেক্ষা করুন: <strong>{otpTimer} সেকেন্ড</strong>
                 </p>
-              </div>
+              )}
             </div>
           )}
         </div>
@@ -1055,19 +1147,11 @@ function UserRegisterForm({ onClose }) {
 
         {currentStep === 4 && (
           <div style={styles.footerRow}>
-            {!otpVerified && (
+            {!savingData && !showSuccessPopup && (
               <>
                 <button style={styles.btnBack} onClick={handleBackFromStep4}>← পূর্ববর্তী</button>
                 <button style={styles.btnConfirm} onClick={handleVerifyOtp}>ভেরিফাই করুন</button>
               </>
-            )}
-            {otpVerified && (
-              <button
-                style={styles.btnNext}
-                onClick={() => alert('অ্যাকাউন্ট সংরক্ষণ পরের ধাপে যুক্ত হবে (Supabase)।')}
-              >
-                অ্যাকাউন্ট তৈরি সম্পন্ন করুন →
-              </button>
             )}
           </div>
         )}
@@ -1079,15 +1163,12 @@ function UserRegisterForm({ onClose }) {
       {showSuccessPopup && (
         <div style={styles.successOverlay}>
           <div style={styles.successBox}>
-            {/* সোনালি ✓ আইকন */}
             <div style={styles.successIconWrapper}>
               <div style={styles.successIcon}>✓</div>
             </div>
 
-            {/* শিরোনাম */}
             <h2 style={styles.successTitle}>অভিনন্দন!</h2>
 
-            {/* বার্তা */}
             <p style={styles.successMessage}>
               আপনার ভেরিফিকেশন সঠিকভাবে সম্পন্ন হয়েছে।
             </p>
@@ -1102,7 +1183,6 @@ function UserRegisterForm({ onClose }) {
               ধন্যবাদ! BD Textail Job-এর সাথে থাকার জন্য।
             </p>
 
-            {/* ঠিক আছে বাটন */}
             <button style={styles.successBtn} onClick={handleCloseSuccessPopup}>
               ঠিক আছে
             </button>
@@ -1522,6 +1602,14 @@ const styles = {
     border: '1.5px solid #d4a537',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
+  },
+  savingText: {
+    fontSize: '13px',
+    color: '#0a1f44',
+    fontWeight: 600,
+    textAlign: 'center',
+    margin: '8px 0',
+    fontFamily: "'Hind Siliguri', sans-serif",
   },
   verifiedBox: {
     display: 'flex', alignItems: 'flex-start', gap: '12px',
