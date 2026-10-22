@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import UserRegisterForm from './UserRegisterForm.jsx'
+import JobSeekerRegisterForm from './JobSeekerRegisterForm.jsx'
 
 function HomePage() {
   // পপআপ দেখানো/লুকানোর অবস্থা
   const [showAccountPopup, setShowAccountPopup] = useState(false)
 
-  // সাধারণ ইউজার রেজিস্ট্রেশন ফরম দেখানো/লুকানোর অবস্থা
-  const [showRegisterForm, setShowRegisterForm] = useState(false)
+  // কোন ফরম দেখাব (general / jobseeker / none)
+  const [activeForm, setActiveForm] = useState('none')
 
   // মোট ব্যবহারকারীর সংখ্যা (Supabase যুক্ত হলে বাস্তব সংখ্যা আসবে)
   const [userCount, setUserCount] = useState(0)
@@ -21,21 +22,21 @@ function HomePage() {
     setShowAccountPopup(false)
   }
 
-  // সাধারণ ইউজার নির্বাচন করলে → রেজিস্ট্রেশন ফরম খুলবে
+  // সাধারণ ইউজার নির্বাচন করলে → সাধারণ ইউজার ফরম খুলবে
   const handleSelectGeneralUser = () => {
     setShowAccountPopup(false)
-    setShowRegisterForm(true)
+    setActiveForm('general')
   }
 
-  // চাকরিজীবী নির্বাচন করলে → ভবিষ্যতে আলাদা ফরম
+  // চাকরিজীবী নির্বাচন করলে → চাকরিজীবী ফরম খুলবে
   const handleSelectJobSeeker = () => {
-    alert('চাকরিজীবী রেজিস্ট্রেশন ফরম পরের ধাপে যুক্ত হবে।')
     setShowAccountPopup(false)
+    setActiveForm('jobseeker')
   }
 
-  // রেজিস্ট্রেশন ফরম বন্ধ করে হোমপেজে ফেরা
-  const handleCloseRegisterForm = () => {
-    setShowRegisterForm(false)
+  // ফরম বন্ধ করে হোমপেজে ফেরা
+  const handleCloseForm = () => {
+    setActiveForm('none')
   }
 
   // লগইন বাটন (পরের ধাপে কাজ করব)
@@ -44,14 +45,18 @@ function HomePage() {
   }
 
   // =====================================================
-  // যদি রেজিস্ট্রেশন ফরম দেখাতে হয় — শুধু সেই ফরম render হবে
+  // কোন ফরম দেখাতে হবে?
   // =====================================================
-  if (showRegisterForm) {
-    return <UserRegisterForm onClose={handleCloseRegisterForm} />
+  if (activeForm === 'general') {
+    return <UserRegisterForm onClose={handleCloseForm} />
+  }
+
+  if (activeForm === 'jobseeker') {
+    return <JobSeekerRegisterForm onClose={handleCloseForm} />
   }
 
   // =====================================================
-  // নাহলে সাধারণ হোমপেজ
+  // ডিফল্ট: হোমপেজ
   // =====================================================
   return (
     <div style={styles.page}>
@@ -195,18 +200,16 @@ function HomePage() {
         </div>
       )}
 
-      {/* ============ কীফ্রেম অ্যানিমেশন ============ */}
+      {/* ============ কীফ্রেম ============ */}
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
-
         @keyframes popupFade {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-
         @keyframes popupSlide {
           from { opacity: 0; transform: translateY(20px) scale(0.98); }
           to { opacity: 1; transform: translateY(0) scale(1); }
@@ -217,7 +220,7 @@ function HomePage() {
 }
 
 // =====================================================
-// সব স্টাইল (একই ফাইলে)
+// স্টাইল
 // =====================================================
 const styles = {
   page: {
