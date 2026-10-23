@@ -97,123 +97,53 @@ const thanasByDistrict = {
   'শেরপুর': ['শেরপুর সদর', 'নালিতাবাড়ী', 'নকলা', 'শ্রীবরদী', 'ঝিনাইগাতী']
 }
 
-// =====================================================
-// শিক্ষাগত যোগ্যতার তালিকা
-// =====================================================
-const educationLevels = [
-  'PSC', 'JSC', 'SSC', 'HSC', 'ডিপ্লোমা',
-  'স্নাতক (Graduation)', 'স্নাতকোত্তর (Masters)',
-  'শিক্ষাগত যোগ্যতা নাই'
-]
-
-// =====================================================
-// ইন্ডাস্ট্রি টাইপ (নতুন)
-// =====================================================
-const industryTypes = [
-  'টেক্সটাইল',
-  'গার্মেন্টস',
-  'টেক্সটাইল ডাইং',
-  'টেক্সটাইল প্রিন্টিং',
-  'নিটিং',
-  'স্পিনিং',
-  'অন্যান্য'
-]
-
-// =====================================================
-// পাশের সালের তালিকা (১৯৮০ - ২০৫০)
-// =====================================================
+const educationLevels = ['PSC', 'JSC', 'SSC', 'HSC', 'ডিপ্লোমা', 'স্নাতক (Graduation)', 'স্নাতকোত্তর (Masters)', 'শিক্ষাগত যোগ্যতা নাই']
 const passingYears = []
-for (let year = 1980; year <= 2050; year++) {
-  passingYears.push(year)
-}
+for (let year = 1980; year <= 2050; year++) { passingYears.push(year) }
 
-// =====================================================
-// অভিজ্ঞতার বছর ও মাসের তালিকা
-// =====================================================
+const industryTypes = ['টেক্সটাইল', 'গার্মেন্টস', 'টেক্সটাইল ডাইং', 'টেক্সটাইল প্রিন্টিং', 'নিটিং', 'স্পিনিং', 'অন্যান্য']
+
 const experienceYears = []
 for (let y = 0; y <= 40; y++) experienceYears.push(y)
 
 const experienceMonths = []
 for (let m = 0; m <= 11; m++) experienceMonths.push(m)
 
-// =====================================================
-// মূল কম্পোনেন্ট
-// =====================================================
 function JobSeekerRegisterForm({ onClose }) {
   const [currentStep, setCurrentStep] = useState(1)
-
-  // Step 1 ডেটা
-  const [formData, setFormData] = useState({
-    name: '',
-    fatherName: '',
-    motherName: '',
-    division: '',
-    district: '',
-    thana: '',
-    village: ''
-  })
-
-  // নিজের ছবি
+  const [formData, setFormData] = useState({ name: '', fatherName: '', motherName: '', division: '', district: '', thana: '', village: '' })
   const [profileImage, setProfileImage] = useState(null)
-
-  // Step 2 ডেটা
-  const [education, setEducation] = useState({
-    level: '',
-    institution: '',
-    passingYear: ''
-  })
+  const [education, setEducation] = useState({ level: '', institution: '', passingYear: '' })
   const [certificates, setCertificates] = useState([])
+  
+  // Step 3 ডেটা (ক্যারিয়ার)
+  const [career, setCareer] = useState({ industryType: '', companyName: '', factoryLocation: '', designation: '', expYears: '', expMonths: '' })
 
-  // Step 3 ডেটা (পেশাগত তথ্য)
-  const [career, setCareer] = useState({
-    industryType: '',
-    companyName: '',
-    factoryLocation: '',
-    designation: '',
-    expYears: '',
-    expMonths: ''
-  })
-
-  // Step 4 ডেটা
-  const [contact, setContact] = useState({
-    mobile: '',
-    email: ''
-  })
+  // Step 4 ডেটা (কন্টাক্ট + পাসওয়ার্ড)
+  const [contact, setContact] = useState({ mobile: '', email: '', password: '', confirmPassword: '' })
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  
   const [idType, setIdType] = useState('')
   const [idImage, setIdImage] = useState(null)
-
-  // Step 5 ডেটা (OTP)
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [otpTimer, setOtpTimer] = useState(0)
   const [resendDisabled, setResendDisabled] = useState(false)
   const [otpVerified, setOtpVerified] = useState(false)
-
-  // সফল পপআপ
   const [showSuccessPopup, setShowSuccessPopup] = useState(false)
-
   const [generatedOtp, setGeneratedOtp] = useState('')
   const [sendingOtp, setSendingOtp] = useState(false)
   const [sendError, setSendError] = useState('')
   const [savingData, setSavingData] = useState(false)
-
-  // থানা সার্চ
   const [thanaSearch, setThanaSearch] = useState('')
   const [showThanaDropdown, setShowThanaDropdown] = useState(false)
-
   const [errors, setErrors] = useState({})
 
-  // ---------- নিজের ছবি হ্যান্ডলার ----------
   const handleAddProfileImage = (file) => {
     if (!file) return
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png']
-    if (!allowedTypes.includes(file.type)) {
-      alert('শুধু JPG অথবা PNG ফাইল আপলোড করতে পারবেন।')
-      return
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      alert('ছবির সাইজ সর্বোচ্চ ৫ MB হতে পারবে।')
-      return
-    }
+    if (!allowedTypes.includes(file.type)) { alert('শুধু JPG অথবা PNG ফাইল আপলোড করতে পারবেন।'); return }
+    if (file.size > 5 * 1024 * 1024) { alert('ছবির সাইজ সর্বোচ্চ ৫ MB হতে পারবে।'); return }
     const reader = new FileReader()
     reader.onloadend = () => {
       setProfileImage({ file, preview: reader.result, name: file.name })
@@ -222,104 +152,58 @@ function JobSeekerRegisterForm({ onClose }) {
     reader.readAsDataURL(file)
   }
 
-  // ---------- OTP জেনারেট ----------
-  const generateOtp = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString()
-  }
+  const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString()
 
-  // ---------- EmailJS দিয়ে OTP পাঠানো ----------
   const sendOtpEmail = async (otpCode, email, name) => {
-    setSendingOtp(true)
-    setSendError('')
-
+    setSendingOtp(true); setSendError('')
     try {
       const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID
       const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID
       const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY
-
-      if (!serviceId || !templateId || !publicKey) {
-        throw new Error('EmailJS সেটিংস পাওয়া যায়নি।')
-      }
-
-      await emailjs.send(serviceId, templateId, {
-        to_email: email,
-        user_name: name || 'ব্যবহারকারী',
-        otp_code: otpCode
-      }, publicKey)
-
-      setSendingOtp(false)
-      return true
+      if (!serviceId || !templateId || !publicKey) throw new Error('EmailJS সেটিংস পাওয়া যায়নি।')
+      await emailjs.send(serviceId, templateId, { to_email: email, user_name: name || 'ব্যবহারকারী', otp_code: otpCode }, publicKey)
+      setSendingOtp(false); return true
     } catch (err) {
       console.error('EmailJS Error:', err)
-      setSendingOtp(false)
-      setSendError(err?.text || err?.message || 'ইমেইল পাঠাতে সমস্যা হয়েছে।')
-      return false
+      setSendingOtp(false); setSendError(err?.text || err?.message || 'ইমেইল পাঠাতে সমস্যা হয়েছে।'); return false
     }
   }
 
-  // ---------- OTP টাইমার ----------
   useEffect(() => {
-    if (otpTimer <= 0) {
-      if (resendDisabled) setResendDisabled(false)
-      return
-    }
-    const timer = setTimeout(() => {
-      setOtpTimer((prev) => prev - 1)
-    }, 1000)
+    if (otpTimer <= 0) { if (resendDisabled) setResendDisabled(false); return }
+    const timer = setTimeout(() => { setOtpTimer((prev) => prev - 1) }, 1000)
     return () => clearTimeout(timer)
   }, [otpTimer, resendDisabled])
 
-  // ---------- Step 1 হ্যান্ডলার ----------
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }))
-    if (field === 'division') {
-      setFormData((prev) => ({ ...prev, division: value, district: '', thana: '' }))
-    }
-    if (field === 'district') {
-      setFormData((prev) => ({ ...prev, district: value, thana: '' }))
-      setThanaSearch('')
-    }
+    if (field === 'division') setFormData((prev) => ({ ...prev, division: value, district: '', thana: '' }))
+    if (field === 'district') { setFormData((prev) => ({ ...prev, district: value, thana: '' })); setThanaSearch('') }
   }
 
   const availableDistricts = formData.division ? divisions[formData.division] || [] : []
   const availableThanas = formData.district ? thanasByDistrict[formData.district] || [] : []
-
-  const filteredThanas = thanaSearch.trim()
-    ? availableThanas.filter((t) => t.includes(thanaSearch.trim()))
-    : availableThanas
+  const filteredThanas = thanaSearch.trim() ? availableThanas.filter((t) => t.includes(thanaSearch.trim())) : availableThanas
 
   const handleSelectThana = (thana) => {
     setFormData((prev) => ({ ...prev, thana }))
-    setThanaSearch(thana)
-    setShowThanaDropdown(false)
+    setThanaSearch(thana); setShowThanaDropdown(false)
     if (errors.thana) setErrors((prev) => ({ ...prev, thana: '' }))
   }
 
-  // ---------- Step 2 হ্যান্ডলার ----------
   const handleEducationChange = (field, value) => {
     setEducation((prev) => ({ ...prev, [field]: value }))
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }))
-    if (field === 'level' && value === 'শিক্ষাগত যোগ্যতা নাই') {
-      setCertificates([])
-    }
+    if (field === 'level' && value === 'শিক্ষাগত যোগ্যতা নাই') setCertificates([])
   }
 
   const handleAddCertificate = (file) => {
     if (!file) return
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']
-    if (!allowedTypes.includes(file.type)) {
-      alert('শুধু JPG, PNG অথবা PDF ফাইল আপলোড করতে পারবেন।')
-      return
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      alert('ফাইলের সাইজ সর্বোচ্চ ৫ MB হতে পারবে।')
-      return
-    }
-    if (certificates.length >= 3) {
-      alert('সর্বোচ্চ ৩টি সার্টিফিকেট আপলোড করা যাবে।')
-      return
-    }
+    if (!allowedTypes.includes(file.type)) { alert('শুধু JPG, PNG অথবা PDF ফাইল আপলোড করতে পারবেন।'); return }
+    if (file.size > 5 * 1024 * 1024) { alert('ফাইলের সাইজ সর্বোচ্চ ৫ MB হতে পারবে।'); return }
+    if (certificates.length >= 3) { alert('সর্বোচ্চ ৩টি সার্টিফিকেট আপলোড করা যাবে।'); return }
     const reader = new FileReader()
     reader.onloadend = () => {
       setCertificates((prev) => [...prev, { file, preview: reader.result, name: file.name }])
@@ -328,24 +212,19 @@ function JobSeekerRegisterForm({ onClose }) {
     reader.readAsDataURL(file)
   }
 
-  // ---------- Step 3 হ্যান্ডলার ----------
   const handleCareerChange = (field, value) => {
     setCareer((prev) => ({ ...prev, [field]: value }))
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }))
   }
 
-  // ---------- Step 4 হ্যান্ডলার ----------
   const handleContactChange = (field, value) => {
-    if (field === 'mobile') {
-      value = value.replace(/\D/g, '').slice(0, 11)
-    }
+    if (field === 'mobile') value = value.replace(/\D/g, '').slice(0, 11)
     setContact((prev) => ({ ...prev, [field]: value }))
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }))
   }
 
   const handleIdTypeChange = (type) => {
-    setIdType(type)
-    setIdImage(null)
+    setIdType(type); setIdImage(null)
     if (errors.idImage) setErrors((prev) => ({ ...prev, idImage: '' }))
     if (errors.idType) setErrors((prev) => ({ ...prev, idType: '' }))
   }
@@ -353,14 +232,8 @@ function JobSeekerRegisterForm({ onClose }) {
   const handleAddIdImage = (file) => {
     if (!file) return
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']
-    if (!allowedTypes.includes(file.type)) {
-      alert('শুধু JPG, PNG অথবা PDF ফাইল আপলোড করতে পারবেন।')
-      return
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      alert('ফাইলের সাইজ সর্বোচ্চ ৫ MB হতে পারবে।')
-      return
-    }
+    if (!allowedTypes.includes(file.type)) { alert('শুধু JPG, PNG অথবা PDF ফাইল আপলোড করতে পারবেন।'); return }
+    if (file.size > 5 * 1024 * 1024) { alert('ফাইলের সাইজ সর্বোচ্চ ৫ MB হতে পারবে।'); return }
     const reader = new FileReader()
     reader.onloadend = () => {
       setIdImage({ file, preview: reader.result, name: file.name })
@@ -369,7 +242,7 @@ function JobSeekerRegisterForm({ onClose }) {
     reader.readAsDataURL(file)
   }
 
-  // ---------- Step 1 → Step 2 ----------
+  // Step 1 → 2
   const handleNextFromStep1 = () => {
     const newErrors = {}
     if (!profileImage) newErrors.profileImage = 'আপনার নিজের ছবি আপলোড করুন'
@@ -380,27 +253,18 @@ function JobSeekerRegisterForm({ onClose }) {
     if (!formData.district) newErrors.district = 'জেলা নির্বাচন করুন'
     if (!formData.thana) newErrors.thana = 'থানা নির্বাচন করুন'
     if (!formData.village.trim()) newErrors.village = 'গ্রামের নাম লিখুন'
-
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
-      const firstError = Object.keys(newErrors)[0]
-      const el = document.getElementById(`field-${firstError}`)
+      const el = document.getElementById(`field-${Object.keys(newErrors)[0]}`)
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
-    setErrors({})
-    setCurrentStep(2)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setErrors({}); setCurrentStep(2); window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // ---------- Step 2 → Step 1 ----------
-  const handleBackFromStep2 = () => {
-    setErrors({})
-    setCurrentStep(1)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  const handleBackFromStep2 = () => { setErrors({}); setCurrentStep(1); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
-  // ---------- Step 2 → Step 3 ----------
+  // Step 2 → 3
   const handleNextFromStep2 = () => {
     const newErrors = {}
     if (!education.level) newErrors.level = 'শিক্ষাগত যোগ্যতা নির্বাচন করুন'
@@ -411,24 +275,16 @@ function JobSeekerRegisterForm({ onClose }) {
     }
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
-      const firstError = Object.keys(newErrors)[0]
-      const el = document.getElementById(`field-${firstError}`)
+      const el = document.getElementById(`field-${Object.keys(newErrors)[0]}`)
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
-    setErrors({})
-    setCurrentStep(3)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setErrors({}); setCurrentStep(3); window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // ---------- Step 3 → Step 2 ----------
-  const handleBackFromStep3 = () => {
-    setErrors({})
-    setCurrentStep(2)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  const handleBackFromStep3 = () => { setErrors({}); setCurrentStep(2); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
-  // ---------- Step 3 → Step 4 ----------
+  // Step 3 → 4
   const handleNextFromStep3 = () => {
     const newErrors = {}
     if (!career.industryType) newErrors.industryType = 'কোথায় চাকরি করেন নির্বাচন করুন'
@@ -437,230 +293,132 @@ function JobSeekerRegisterForm({ onClose }) {
     if (!career.designation.trim()) newErrors.designation = 'আপনার পদবী লিখুন'
     if (!career.expYears) newErrors.expYears = 'অভিজ্ঞতার বছর নির্বাচন করুন'
     if (!career.expMonths && career.expMonths !== '0') newErrors.expMonths = 'অভিজ্ঞতার মাস নির্বাচন করুন'
-
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
-      const firstError = Object.keys(newErrors)[0]
-      const el = document.getElementById(`field-${firstError}`)
+      const el = document.getElementById(`field-${Object.keys(newErrors)[0]}`)
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
-    setErrors({})
-    setCurrentStep(4)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setErrors({}); setCurrentStep(4); window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // ---------- Step 4 → Step 3 ----------
-  const handleBackFromStep4 = () => {
-    setErrors({})
-    setCurrentStep(3)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  const handleBackFromStep4 = () => { setErrors({}); setCurrentStep(3); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
-  // ---------- Step 4 → Step 5 (OTP) ----------
+  // Step 4 → 5
   const goToStep5 = async () => {
-    setErrors({})
-    setSendError('')
-
-    const newOtp = generateOtp()
-    setGeneratedOtp(newOtp)
-
-    setCurrentStep(5)
-    setOtp(['', '', '', '', '', ''])
-    setOtpVerified(false)
-    setOtpTimer(60)
-    setResendDisabled(true)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-
+    setErrors({}); setSendError('')
+    const newOtp = generateOtp(); setGeneratedOtp(newOtp)
+    setCurrentStep(5); setOtp(['', '', '', '', '', '']); setOtpVerified(false)
+    setOtpTimer(60); setResendDisabled(true); window.scrollTo({ top: 0, behavior: 'smooth' })
     await sendOtpEmail(newOtp, contact.email, formData.name)
   }
 
-  // ---------- Step 4 কনফার্ম ----------
   const handleConfirmFromStep4 = () => {
     const newErrors = {}
-
-    if (!idType) {
-      newErrors.idType = 'NID অথবা জন্মনিবন্ধন যেকোনো একটি নির্বাচন করুন'
-    } else if (!idImage) {
-      newErrors.idImage = idType === 'nid'
-        ? 'NID কার্ডের ছবি আপলোড করুন'
-        : 'জন্মনিবন্ধনের ছবি আপলোড করুন'
-    }
-
-    if (!contact.mobile.trim()) {
-      newErrors.mobile = 'মোবাইল নাম্বার দিন'
-    } else if (!/^01[3-9]\d{8}$/.test(contact.mobile)) {
-      newErrors.mobile = 'সঠিক ১১ ডিজিটের মোবাইল নাম্বার দিন (যেমন: 01712345678)'
-    }
-
-    if (!contact.email.trim()) {
-      newErrors.email = 'জিমেইল এড্রেস দিন'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) {
-      newErrors.email = 'সঠিক ইমেইল এড্রেস দিন'
-    }
+    if (!idType) newErrors.idType = 'NID অথবা জন্মনিবন্ধন যেকোনো একটি নির্বাচন করুন'
+    else if (!idImage) newErrors.idImage = idType === 'nid' ? 'NID কার্ডের ছবি আপলোড করুন' : 'জন্মনিবন্ধনের ছবি আপলোড করুন'
+    
+    if (!contact.mobile.trim()) newErrors.mobile = 'মোবাইল নাম্বার দিন'
+    else if (!/^01[3-9]\d{8}$/.test(contact.mobile)) newErrors.mobile = 'সঠিক ১১ ডিজিটের মোবাইল নাম্বার দিন'
+    
+    if (!contact.email.trim()) newErrors.email = 'জিমেইল এড্রেস দিন'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) newErrors.email = 'সঠিক ইমেইল এড্রেস দিন'
+    
+    if (!contact.password) newErrors.password = 'পাসওয়ার্ড দিন'
+    else if (contact.password.length < 6) newErrors.password = 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে'
+    
+    if (contact.password !== contact.confirmPassword) newErrors.confirmPassword = 'পাসওয়ার্ড দুটি মিলছে না'
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
-      const firstError = Object.keys(newErrors)[0]
-      const el = document.getElementById(`field-${firstError}`)
+      const el = document.getElementById(`field-${Object.keys(newErrors)[0]}`)
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
-
-    setErrors({})
-    goToStep5()
+    setErrors({}); goToStep5()
   }
 
-  // ---------- Step 5 → Step 4 ----------
-  const handleBackFromStep5 = () => {
-    setErrors({})
-    setCurrentStep(4)
-    setOtpTimer(0)
-    setResendDisabled(false)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  const handleBackFromStep5 = () => { setErrors({}); setCurrentStep(4); setOtpTimer(0); setResendDisabled(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
-  // ---------- OTP ইনপুট ----------
   const handleOtpChange = (index, value) => {
     if (value && !/^\d$/.test(value)) return
-    const newOtp = [...otp]
-    newOtp[index] = value
-    setOtp(newOtp)
+    const newOtp = [...otp]; newOtp[index] = value; setOtp(newOtp)
     if (errors.otp) setErrors((prev) => ({ ...prev, otp: '' }))
-    if (value && index < 5) {
-      const nextInput = document.getElementById(`otp-${index + 1}`)
-      if (nextInput) nextInput.focus()
-    }
+    if (value && index < 5) { const nextInput = document.getElementById(`otp-${index + 1}`); if (nextInput) nextInput.focus() }
   }
 
   const handleOtpKeyDown = (index, e) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      const prevInput = document.getElementById(`otp-${index - 1}`)
-      if (prevInput) prevInput.focus()
-    }
+    if (e.key === 'Backspace' && !otp[index] && index > 0) { const prevInput = document.getElementById(`otp-${index - 1}`); if (prevInput) prevInput.focus() }
   }
 
-  // ---------- রিসেন্ড ----------
   const handleResendOtp = async () => {
     if (resendDisabled) return
-    const newOtp = generateOtp()
-    setGeneratedOtp(newOtp)
-    setOtp(['', '', '', '', '', ''])
-    setOtpTimer(60)
-    setResendDisabled(true)
-    setOtpVerified(false)
-    setSendError('')
+    const newOtp = generateOtp(); setGeneratedOtp(newOtp); setOtp(['', '', '', '', '', ''])
+    setOtpTimer(60); setResendDisabled(true); setOtpVerified(false); setSendError('')
     await sendOtpEmail(newOtp, contact.email, formData.name)
   }
 
-  // ---------- Supabase-এ ছবি আপলোড ----------
   const uploadImage = async (file, bucket) => {
     const fileExt = file.name.split('.').pop()
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`
-    
-    const { error } = await supabase.storage
-      .from(bucket)
-      .upload(fileName, file, { cacheControl: '3600', upsert: false })
-
+    const { error } = await supabase.storage.from(bucket).upload(fileName, file, { cacheControl: '3600', upsert: false })
     if (error) throw error
-
     if (bucket === 'profile-images') {
       const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(fileName)
       return publicUrlData.publicUrl
-    } else {
-      return fileName
-    }
+    } else { return fileName }
   }
 
-  // ---------- OTP ভেরিফাই ও ডেটা সেভ ----------
   const handleVerifyOtp = async () => {
     const code = otp.join('')
-    if (code.length !== 6) {
-      setErrors({ otp: 'সম্পূর্ণ ৬ সংখ্যার কোড দিন' })
-      return
-    }
-    if (code !== generatedOtp) {
-      setErrors({ otp: 'ভুল কোড! আবার চেষ্টা করুন।' })
-      return
-    }
-    setErrors({})
-    setOtpVerified(true)
-    
-    setSavingData(true)
-    
+    if (code.length !== 6) { setErrors({ otp: 'সম্পূর্ণ ৬ সংখ্যার কোড দিন' }); return }
+    if (code !== generatedOtp) { setErrors({ otp: 'ভুল কোড! আবার চেষ্টা করুন।' }); return }
+    setErrors({}); setOtpVerified(true); setSavingData(true)
     try {
       const profileImageUrl = await uploadImage(profileImage.file, 'profile-images')
-      
       let certificateUrls = []
-      if (certificates.length > 0) {
-        for (const cert of certificates) {
-          const url = await uploadImage(cert.file, 'documents')
-          certificateUrls.push(url)
-        }
-      }
-      
+      if (certificates.length > 0) { for (const cert of certificates) { const url = await uploadImage(cert.file, 'documents'); certificateUrls.push(url) } }
       const idImageUrl = await uploadImage(idImage.file, 'documents')
       
-      const { error: insertError } = await supabase
-        .from('users')
-        .insert([
-          {
-            user_type: 'job_seeker',
-            profile_image_url: profileImageUrl,
-            name: formData.name,
-            father_name: formData.fatherName,
-            mother_name: formData.motherName,
-            division: formData.division,
-            district: formData.district,
-            thana: formData.thana,
-            village: formData.village,
-            education_level: education.level,
-            institution: education.level === 'শিক্ষাগত যোগ্যতা নাই' ? null : education.institution,
-            passing_year: education.level === 'শিক্ষাগত যোগ্যতা নাই' ? null : education.passingYear,
-            certificate_urls: certificateUrls,
-            industry_type: career.industryType,
-            company_name: career.companyName,
-            factory_location: career.factoryLocation,
-            designation: career.designation,
-            experience_years: career.expYears,
-            experience_months: career.expMonths,
-            id_type: idType,
-            id_image_url: idImageUrl,
-            mobile: contact.mobile,
-            email: contact.email,
-            status: 'pending'
-          }
-        ])
-
-      if (insertError) {
-        if (insertError.code === '23505') {
-          throw new Error('এই জিমেইল দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট খোলা হয়েছে।')
-        }
-        throw insertError
-      }
-
-      setSavingData(false)
-      setShowSuccessPopup(true)
-      
+      const { error: insertError } = await supabase.from('users').insert([{
+        user_type: 'job_seeker',
+        profile_image_url: profileImageUrl,
+        name: formData.name,
+        father_name: formData.fatherName,
+        mother_name: formData.motherName,
+        division: formData.division,
+        district: formData.district,
+        thana: formData.thana,
+        village: formData.village,
+        education_level: education.level,
+        institution: education.level === 'শিক্ষাগত যোগ্যতা নাই' ? null : education.institution,
+        passing_year: education.level === 'শিক্ষাগত যোগ্যতা নাই' ? null : education.passingYear,
+        certificate_urls: certificateUrls,
+        industry_type: career.industryType,
+        company_name: career.companyName,
+        factory_location: career.factoryLocation,
+        designation: career.designation,
+        experience_years: career.expYears,
+        experience_months: career.expMonths,
+        id_type: idType,
+        id_image_url: idImageUrl,
+        mobile: contact.mobile,
+        email: contact.email,
+        password: contact.password, // নতুন
+        status: 'pending'
+      }])
+      if (insertError) { if (insertError.code === '23505') throw new Error('এই জিমেইল দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট খোলা হয়েছে।'); throw insertError }
+      setSavingData(false); setShowSuccessPopup(true)
     } catch (err) {
-      console.error('Save Error:', err)
-      setSavingData(false)
-      setOtpVerified(false)
+      console.error('Save Error:', err); setSavingData(false); setOtpVerified(false)
       setErrors({ otp: err.message || 'তথ্য সেভ করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।' })
     }
   }
 
-  const handleCloseSuccessPopup = () => {
-    setShowSuccessPopup(false)
-    onClose()
-  }
+  const handleCloseSuccessPopup = () => { setShowSuccessPopup(false); onClose() }
 
-  // =====================================================
-  // রেন্ডার
-  // =====================================================
   return (
     <div style={styles.wrapper}>
-      {/* হেডার */}
       <div style={styles.header}>
         <button style={styles.closeBtn} onClick={onClose} aria-label="বন্ধ">✕</button>
         <div style={styles.headerContent}>
@@ -668,21 +426,9 @@ function JobSeekerRegisterForm({ onClose }) {
           <p style={styles.headerSubtitle}>চাকরিজীবী রেজিস্ট্রেশন</p>
         </div>
       </div>
-
-      {/* প্রগ্রেস বার */}
       <div style={styles.progressWrapper}>
         <div style={styles.progressBar}>
-          <div
-            style={{
-              ...styles.progressFill,
-              width:
-                currentStep === 1 ? '20%'
-                : currentStep === 2 ? '40%'
-                : currentStep === 3 ? '60%'
-                : currentStep === 4 ? '80%'
-                : '100%'
-            }}
-          ></div>
+          <div style={{ ...styles.progressFill, width: currentStep === 1 ? '20%' : currentStep === 2 ? '40%' : currentStep === 3 ? '60%' : currentStep === 4 ? '80%' : '100%' }}></div>
         </div>
         <p style={styles.progressText}>
           {currentStep === 1 && 'ধাপ ১ / ৫ — ব্যক্তিগত তথ্য'}
@@ -693,15 +439,12 @@ function JobSeekerRegisterForm({ onClose }) {
         </p>
       </div>
 
-      {/* ================================================= */}
-      {/* Step 1: ব্যক্তিগত তথ্য */}
-      {/* ================================================= */}
+      {/* Step 1 */}
       {currentStep === 1 && (
         <div style={styles.body}>
           <div style={styles.field} id="field-profileImage">
             <label style={styles.label}>আপনার নিজের ছবি <span style={styles.required}>*</span></label>
             <p style={styles.helperText}>JPG অথবা PNG — সর্বোচ্চ ৫ MB</p>
-
             <div style={styles.profileImageWrapper}>
               {profileImage ? (
                 <div style={styles.profileImageContainer}>
@@ -718,25 +461,21 @@ function JobSeekerRegisterForm({ onClose }) {
             </div>
             {errors.profileImage && <p style={styles.errorText}>{errors.profileImage}</p>}
           </div>
-
           <div style={styles.field} id="field-name">
             <label style={styles.label}>আপনার নাম <span style={styles.required}>*</span></label>
             <input type="text" style={{ ...styles.input, ...(errors.name ? styles.inputError : {}) }} placeholder="যেমন: মোহাম্মদ রফিকুল ইসলাম" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} />
             {errors.name && <p style={styles.errorText}>{errors.name}</p>}
           </div>
-
           <div style={styles.field} id="field-fatherName">
             <label style={styles.label}>বাবার নাম <span style={styles.required}>*</span></label>
             <input type="text" style={{ ...styles.input, ...(errors.fatherName ? styles.inputError : {}) }} placeholder="বাবার পূর্ণ নাম লিখুন" value={formData.fatherName} onChange={(e) => handleChange('fatherName', e.target.value)} />
             {errors.fatherName && <p style={styles.errorText}>{errors.fatherName}</p>}
           </div>
-
           <div style={styles.field} id="field-motherName">
             <label style={styles.label}>মায়ের নাম <span style={styles.required}>*</span></label>
             <input type="text" style={{ ...styles.input, ...(errors.motherName ? styles.inputError : {}) }} placeholder="মায়ের পূর্ণ নাম লিখুন" value={formData.motherName} onChange={(e) => handleChange('motherName', e.target.value)} />
             {errors.motherName && <p style={styles.errorText}>{errors.motherName}</p>}
           </div>
-
           <div style={styles.field} id="field-division">
             <label style={styles.label}>বিভাগ <span style={styles.required}>*</span></label>
             <select style={{ ...styles.input, ...styles.select, ...(errors.division ? styles.inputError : {}) }} value={formData.division} onChange={(e) => handleChange('division', e.target.value)}>
@@ -745,7 +484,6 @@ function JobSeekerRegisterForm({ onClose }) {
             </select>
             {errors.division && <p style={styles.errorText}>{errors.division}</p>}
           </div>
-
           <div style={styles.field} id="field-district">
             <label style={styles.label}>জেলা <span style={styles.required}>*</span></label>
             <select style={{ ...styles.input, ...styles.select, ...(errors.district ? styles.inputError : {}), ...(availableDistricts.length === 0 ? styles.inputDisabled : {}) }} value={formData.district} disabled={availableDistricts.length === 0} onChange={(e) => handleChange('district', e.target.value)}>
@@ -754,11 +492,10 @@ function JobSeekerRegisterForm({ onClose }) {
             </select>
             {errors.district && <p style={styles.errorText}>{errors.district}</p>}
           </div>
-
           <div style={styles.field} id="field-thana">
             <label style={styles.label}>থানা <span style={styles.required}>*</span></label>
             <div style={styles.thanaWrapper}>
-              <input type="text" style={{ ...styles.input, ...(errors.thana ? styles.inputError : {}), ...(availableThanas.length === 0 ? styles.inputDisabled : {}) }} placeholder={availableThanas.length === 0 ? 'প্রথমে জেলা নির্বাচন করুন' : 'থানার নাম লিখুন বা সার্চ করুন...'} value={thanaSearch} disabled={availableThanas.length === 0} onChange={(e) => { setThanaSearch(e.target.value); setShowThanaDropdown(true); if (formData.thana && e.target.value !== formData.thana) { setFormData((prev) => ({ ...prev, thana: '' })) } }} onFocus={() => availableThanas.length > 0 && setShowThanaDropdown(true)} />
+              <input type="text" style={{ ...styles.input, ...(errors.thana ? styles.inputError : {}), ...(availableThanas.length === 0 ? styles.inputDisabled : {}) }} placeholder={availableThanas.length === 0 ? 'প্রথমে জেলা নির্বাচন করুন' : 'থানার নাম লিখুন বা সার্চ করুন...'} value={thanaSearch} disabled={availableThanas.length === 0} onChange={(e) => { setThanaSearch(e.target.value); setShowThanaDropdown(true); if (formData.thana && e.target.value !== formData.thana) setFormData((prev) => ({ ...prev, thana: '' })) }} onFocus={() => availableThanas.length > 0 && setShowThanaDropdown(true)} />
               {showThanaDropdown && availableThanas.length > 0 && (
                 <div style={styles.thanaDropdown}>
                   {filteredThanas.length === 0 ? <p style={styles.noResult}>কোনো থানা পাওয়া যায়নি</p> : filteredThanas.map((thana) => (
@@ -769,7 +506,6 @@ function JobSeekerRegisterForm({ onClose }) {
             </div>
             {errors.thana && <p style={styles.errorText}>{errors.thana}</p>}
           </div>
-
           <div style={styles.field} id="field-village">
             <label style={styles.label}>গ্রাম / এলাকা <span style={styles.required}>*</span></label>
             <input type="text" style={{ ...styles.input, ...(errors.village ? styles.inputError : {}) }} placeholder="যেমন: মধ্যপাড়া গ্রাম" value={formData.village} onChange={(e) => handleChange('village', e.target.value)} />
@@ -778,9 +514,7 @@ function JobSeekerRegisterForm({ onClose }) {
         </div>
       )}
 
-      {/* ================================================= */}
-      {/* Step 2: শিক্ষাগত যোগ্যতা */}
-      {/* ================================================= */}
+      {/* Step 2 */}
       {currentStep === 2 && (
         <div style={styles.body}>
           <div style={styles.field} id="field-level">
@@ -791,13 +525,9 @@ function JobSeekerRegisterForm({ onClose }) {
             </select>
             {errors.level && <p style={styles.errorText}>{errors.level}</p>}
           </div>
-
           {education.level === 'শিক্ষাগত যোগ্যতা নাই' && (
-            <div style={styles.infoBox}>
-              <p style={styles.infoBoxText}>💡 আপনি "শিক্ষাগত যোগ্যতা নাই" নির্বাচন করেছেন। তাই সার্টিফিকেট তথ্য এবং ছবি আপলোড ছাড়াই পরবর্তী ধাপে যেতে পারবেন।</p>
-            </div>
+            <div style={styles.infoBox}><p style={styles.infoBoxText}>💡 আপনি "শিক্ষাগত যোগ্যতা নাই" নির্বাচন করেছেন। তাই সার্টিফিকেট তথ্য এবং ছবি আপলোড ছাড়াই পরবর্তী ধাপে যেতে পারবেন।</p></div>
           )}
-
           {education.level && education.level !== 'শিক্ষাগত যোগ্যতা নাই' && (
             <>
               <div style={styles.field} id="field-institution">
@@ -805,7 +535,6 @@ function JobSeekerRegisterForm({ onClose }) {
                 <input type="text" style={{ ...styles.input, ...(errors.institution ? styles.inputError : {}) }} placeholder="যেমন: ঢাকা পলিটেকনিক ইনস্টিটিউট" value={education.institution} onChange={(e) => handleEducationChange('institution', e.target.value)} />
                 {errors.institution && <p style={styles.errorText}>{errors.institution}</p>}
               </div>
-
               <div style={styles.field} id="field-passingYear">
                 <label style={styles.label}>পাশের সাল <span style={styles.required}>*</span></label>
                 <select style={{ ...styles.input, ...styles.select, ...(errors.passingYear ? styles.inputError : {}) }} value={education.passingYear} onChange={(e) => handleEducationChange('passingYear', e.target.value)}>
@@ -814,26 +543,19 @@ function JobSeekerRegisterForm({ onClose }) {
                 </select>
                 {errors.passingYear && <p style={styles.errorText}>{errors.passingYear}</p>}
               </div>
-
               <div style={styles.field} id="field-certificates">
                 <label style={styles.label}>শিক্ষাগত সার্টিফিকেট <span style={styles.required}>*</span></label>
                 <p style={styles.helperText}>JPG, PNG অথবা PDF — সর্বোচ্চ ৩টি, প্রতিটি ৫ MB পর্যন্ত</p>
-
                 {certificates.length > 0 && (
                   <div style={styles.previewGrid}>
                     {certificates.map((cert, index) => (
                       <div key={index} style={styles.previewItem}>
-                        {cert.file.type === 'application/pdf' ? (
-                          <div style={styles.pdfPreview}><span style={styles.pdfIcon}>📄</span><span style={styles.pdfName}>{cert.name}</span></div>
-                        ) : (
-                          <img src={cert.preview} alt={`সার্টিফিকেট ${index + 1}`} style={styles.previewImage} />
-                        )}
+                        {cert.file.type === 'application/pdf' ? <div style={styles.pdfPreview}><span style={styles.pdfIcon}>📄</span><span style={styles.pdfName}>{cert.name}</span></div> : <img src={cert.preview} alt={`সার্টিফিকেট ${index + 1}`} style={styles.previewImage} />}
                         <button type="button" style={styles.removeBtn} onClick={() => setCertificates((prev) => prev.filter((_, i) => i !== index))}>✕</button>
                       </div>
                     ))}
                   </div>
                 )}
-
                 {certificates.length < 3 && (
                   <label style={styles.addBtn}>
                     <input type="file" accept="image/jpeg,image/jpg,image/png,application/pdf" style={styles.fileInputHidden} onChange={(e) => { handleAddCertificate(e.target.files[0]); e.target.value = '' }} />
@@ -841,7 +563,6 @@ function JobSeekerRegisterForm({ onClose }) {
                     <span style={styles.addText}>{certificates.length === 0 ? 'সার্টিফিকেট আপলোড করুন' : `আরও আপলোড করুন (${certificates.length}/৩)`}</span>
                   </label>
                 )}
-
                 {errors.certificates && <p style={styles.errorText}>{errors.certificates}</p>}
               </div>
             </>
@@ -849,92 +570,44 @@ function JobSeekerRegisterForm({ onClose }) {
         </div>
       )}
 
-      {/* ================================================= */}
-      {/* Step 3: পেশাগত তথ্য (নতুন) */}
-      {/* ================================================= */}
+      {/* Step 3: পেশাগত তথ্য */}
       {currentStep === 3 && (
         <div style={styles.body}>
           <div style={styles.field} id="field-industryType">
             <label style={styles.label}>আপনি কোথায় চাকরি করেন? <span style={styles.required}>*</span></label>
-            <select
-              style={{ ...styles.input, ...styles.select, ...(errors.industryType ? styles.inputError : {}) }}
-              value={career.industryType}
-              onChange={(e) => handleCareerChange('industryType', e.target.value)}
-            >
+            <select style={{ ...styles.input, ...styles.select, ...(errors.industryType ? styles.inputError : {}) }} value={career.industryType} onChange={(e) => handleCareerChange('industryType', e.target.value)}>
               <option value="">— ইন্ডাস্ট্রি নির্বাচন করুন —</option>
-              {industryTypes.map((type) => (
-                <option key={type} value={type}>{type}</option>
-              ))}
+              {industryTypes.map((type) => <option key={type} value={type}>{type}</option>)}
             </select>
             {errors.industryType && <p style={styles.errorText}>{errors.industryType}</p>}
           </div>
-
-          {/* কোম্পানির নাম — ড্রপডাউন অনুযায়ী */}
           <div style={styles.field} id="field-companyName">
-            <label style={styles.label}>
-              আপনার {career.industryType || 'প্রতিষ্ঠানের'} নাম কি? <span style={styles.required}>*</span>
-            </label>
-            <input
-              type="text"
-              style={{ ...styles.input, ...(errors.companyName ? styles.inputError : {}) }}
-              placeholder={career.industryType ? `আপনার ${career.industryType} এর নাম লিখুন` : 'প্রথমে ইন্ডাস্ট্রি নির্বাচন করুন'}
-              value={career.companyName}
-              onChange={(e) => handleCareerChange('companyName', e.target.value)}
-              disabled={!career.industryType}
-            />
+            <label style={styles.label}>আপনার {career.industryType || 'প্রতিষ্ঠানের'} নাম কি? <span style={styles.required}>*</span></label>
+            <input type="text" style={{ ...styles.input, ...(errors.companyName ? styles.inputError : {}) }} placeholder={career.industryType ? `আপনার ${career.industryType} এর নাম লিখুন` : 'প্রথমে ইন্ডাস্ট্রি নির্বাচন করুন'} value={career.companyName} onChange={(e) => handleCareerChange('companyName', e.target.value)} disabled={!career.industryType} />
             {errors.companyName && <p style={styles.errorText}>{errors.companyName}</p>}
           </div>
-
-          {/* ফ্যাক্টরির অবস্থান */}
           <div style={styles.field} id="field-factoryLocation">
-            <label style={styles.label}>
-              আপনার {career.industryType || 'ফ্যাক্টরি'} কোথায় অবস্থিত? <span style={styles.required}>*</span>
-            </label>
-            <input
-              type="text"
-              style={{ ...styles.input, ...(errors.factoryLocation ? styles.inputError : {}) }}
-              placeholder={career.industryType ? `আপনার ${career.industryType} ফ্যাক্টরি কোথায় অবস্থিত` : 'প্রথমে ইন্ডাস্ট্রি নির্বাচন করুন'}
-              value={career.factoryLocation}
-              onChange={(e) => handleCareerChange('factoryLocation', e.target.value)}
-              disabled={!career.industryType}
-            />
+            <label style={styles.label}>আপনার {career.industryType || 'ফ্যাক্টরি'} কোথায় অবস্থিত? <span style={styles.required}>*</span></label>
+            <input type="text" style={{ ...styles.input, ...(errors.factoryLocation ? styles.inputError : {}) }} placeholder={career.industryType ? `আপনার ${career.industryType} ফ্যাক্টরি কোথায় অবস্থিত` : 'প্রথমে ইন্ডাস্ট্রি নির্বাচন করুন'} value={career.factoryLocation} onChange={(e) => handleCareerChange('factoryLocation', e.target.value)} disabled={!career.industryType} />
             {errors.factoryLocation && <p style={styles.errorText}>{errors.factoryLocation}</p>}
           </div>
-
-          {/* পদবী */}
           <div style={styles.field} id="field-designation">
             <label style={styles.label}>আপনার পদবী কি? <span style={styles.required}>*</span></label>
-            <input
-              type="text"
-              style={{ ...styles.input, ...(errors.designation ? styles.inputError : {}) }}
-              placeholder="যেমন: সিনিয়র মার্চেন্ডাইজার"
-              value={career.designation}
-              onChange={(e) => handleCareerChange('designation', e.target.value)}
-            />
+            <input type="text" style={{ ...styles.input, ...(errors.designation ? styles.inputError : {}) }} placeholder="যেমন: সিনিয়র মার্চেন্ডাইজার" value={career.designation} onChange={(e) => handleCareerChange('designation', e.target.value)} />
             {errors.designation && <p style={styles.errorText}>{errors.designation}</p>}
           </div>
-
-          {/* অভিজ্ঞতা */}
           <div style={styles.field}>
             <label style={styles.label}>আপনার অভিজ্ঞতা <span style={styles.required}>*</span></label>
             <p style={styles.helperText}>কত বছর ও মাস কাজ করেছেন</p>
             <div style={styles.expRow}>
               <div style={styles.expCol}>
-                <select
-                  style={{ ...styles.input, ...styles.select, ...(errors.expYears ? styles.inputError : {}) }}
-                  value={career.expYears}
-                  onChange={(e) => handleCareerChange('expYears', e.target.value)}
-                >
+                <select style={{ ...styles.input, ...styles.select, ...(errors.expYears ? styles.inputError : {}) }} value={career.expYears} onChange={(e) => handleCareerChange('expYears', e.target.value)}>
                   <option value="">বছর</option>
                   {experienceYears.map((y) => <option key={y} value={y}>{y}</option>)}
                 </select>
               </div>
               <div style={styles.expCol}>
-                <select
-                  style={{ ...styles.input, ...styles.select, ...(errors.expMonths ? styles.inputError : {}) }}
-                  value={career.expMonths}
-                  onChange={(e) => handleCareerChange('expMonths', e.target.value)}
-                >
+                <select style={{ ...styles.input, ...styles.select, ...(errors.expMonths ? styles.inputError : {}) }} value={career.expMonths} onChange={(e) => handleCareerChange('expMonths', e.target.value)}>
                   <option value="">মাস</option>
                   {experienceMonths.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
@@ -946,43 +619,29 @@ function JobSeekerRegisterForm({ onClose }) {
         </div>
       )}
 
-      {/* ================================================= */}
-      {/* Step 4: পরিচয়পত্র ও যোগাযোগ */}
-      {/* ================================================= */}
+      {/* Step 4: পরিচয়পত্র ও যোগাযোগ + পাসওয়ার্ড */}
       {currentStep === 4 && (
         <div style={styles.body}>
           <div style={styles.field} id="field-idType">
             <label style={styles.label}>পরিচয়পত্র <span style={styles.required}>*</span></label>
             <p style={styles.helperText}>NID কার্ড অথবা জন্মনিবন্ধন — যেকোনো একটি নির্বাচন করুন</p>
-
             <div style={styles.idTypeRow}>
               <button type="button" style={{ ...styles.idTypeBtn, ...(idType === 'nid' ? styles.idTypeBtnActive : {}) }} onClick={() => handleIdTypeChange('nid')}>
-                <span style={styles.idTypeIcon}>🪪</span>
-                <span style={styles.idTypeLabel}>NID কার্ড</span>
+                <span style={styles.idTypeIcon}>🪪</span><span style={styles.idTypeLabel}>NID কার্ড</span>
               </button>
               <button type="button" style={{ ...styles.idTypeBtn, ...(idType === 'birth' ? styles.idTypeBtnActive : {}) }} onClick={() => handleIdTypeChange('birth')}>
-                <span style={styles.idTypeIcon}>📜</span>
-                <span style={styles.idTypeLabel}>জন্মনিবন্ধন</span>
+                <span style={styles.idTypeIcon}>📜</span><span style={styles.idTypeLabel}>জন্মনিবন্ধন</span>
               </button>
             </div>
             {errors.idType && <p style={styles.errorText}>{errors.idType}</p>}
           </div>
-
           {idType && (
             <div style={styles.field} id="field-idImage">
-              <label style={styles.label}>
-                {idType === 'nid' ? 'NID কার্ডের ছবি' : 'জন্মনিবন্ধনের ছবি'}{' '}
-                <span style={styles.required}>*</span>
-              </label>
+              <label style={styles.label}>{idType === 'nid' ? 'NID কার্ডের ছবি' : 'জন্মনিবন্ধনের ছবি'} <span style={styles.required}>*</span></label>
               <p style={styles.helperText}>JPG, PNG অথবা PDF — সর্বোচ্চ ৫ MB</p>
-
               {idImage ? (
                 <div style={styles.singlePreviewWrapper}>
-                  {idImage.file.type === 'application/pdf' ? (
-                    <div style={styles.pdfPreviewLarge}><span style={styles.pdfIconLarge}>📄</span><span style={styles.pdfNameLarge}>{idImage.name}</span></div>
-                  ) : (
-                    <img src={idImage.preview} alt="পরিচয়পত্র" style={styles.singlePreviewImage} />
-                  )}
+                  {idImage.file.type === 'application/pdf' ? <div style={styles.pdfPreviewLarge}><span style={styles.pdfIconLarge}>📄</span><span style={styles.pdfNameLarge}>{idImage.name}</span></div> : <img src={idImage.preview} alt="পরিচয়পত্র" style={styles.singlePreviewImage} />}
                   <button type="button" style={styles.removeBtnLarge} onClick={() => setIdImage(null)}>✕</button>
                 </div>
               ) : (
@@ -992,34 +651,52 @@ function JobSeekerRegisterForm({ onClose }) {
                   <span style={styles.addText}>{idType === 'nid' ? 'NID কার্ড আপলোড করুন' : 'জন্মনিবন্ধন আপলোড করুন'}</span>
                 </label>
               )}
-
               {errors.idImage && <p style={styles.errorText}>{errors.idImage}</p>}
             </div>
           )}
-
           <div style={styles.field} id="field-mobile">
             <label style={styles.label}>মোবাইল নাম্বার <span style={styles.required}>*</span></label>
             <input type="tel" inputMode="numeric" style={{ ...styles.input, ...(errors.mobile ? styles.inputError : {}) }} placeholder="যেমন: 01712345678" value={contact.mobile} onChange={(e) => handleContactChange('mobile', e.target.value)} />
             <p style={styles.helperText}>আপনার একটি সচল মোবাইল নাম্বার দিন (১১ ডিজিট)</p>
             {errors.mobile && <p style={styles.errorText}>{errors.mobile}</p>}
           </div>
-
           <div style={styles.field} id="field-email">
             <label style={styles.label}>জিমেইল এড্রেস <span style={styles.required}>*</span></label>
             <input type="email" inputMode="email" style={{ ...styles.input, ...(errors.email ? styles.inputError : {}) }} placeholder="যেমন: example@gmail.com" value={contact.email} onChange={(e) => handleContactChange('email', e.target.value)} />
             <p style={styles.helperText}>আপনার একটি সচল জিমেইল দিন (এখানেই ভেরিফিকেশন কোড পাঠানো হবে)</p>
             {errors.email && <p style={styles.errorText}>{errors.email}</p>}
           </div>
+          
+          {/* পাসওয়ার্ড */}
+          <div style={styles.field} id="field-password">
+            <label style={styles.label}>পাসওয়ার্ড দিন <span style={styles.required}>*</span></label>
+            <div style={styles.passwordWrapper}>
+              <input type={showPassword ? 'text' : 'password'} style={{ ...styles.input, paddingRight: '44px', ...(errors.password ? styles.inputError : {}) }} placeholder="কমপক্ষে ৬ অক্ষর" value={contact.password} onChange={(e) => handleContactChange('password', e.target.value)} />
+              <button type="button" style={styles.eyeBtn} onClick={() => setShowPassword(!showPassword)}>
+                {showPassword ? '🙈' : '👁️'}
+              </button>
+            </div>
+            {errors.password && <p style={styles.errorText}>{errors.password}</p>}
+          </div>
+
+          {/* কনফার্ম পাসওয়ার্ড */}
+          <div style={styles.field} id="field-confirmPassword">
+            <label style={styles.label}>কনফার্ম পাসওয়ার্ড দিন <span style={styles.required}>*</span></label>
+            <div style={styles.passwordWrapper}>
+              <input type={showConfirmPassword ? 'text' : 'password'} style={{ ...styles.input, paddingRight: '44px', ...(errors.confirmPassword ? styles.inputError : {}) }} placeholder="আবার পাসওয়ার্ড লিখুন" value={contact.confirmPassword} onChange={(e) => handleContactChange('confirmPassword', e.target.value)} />
+              <button type="button" style={styles.eyeBtn} onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                {showConfirmPassword ? '🙈' : '👁️'}
+              </button>
+            </div>
+            {errors.confirmPassword && <p style={styles.errorText}>{errors.confirmPassword}</p>}
+          </div>
         </div>
       )}
 
-      {/* ================================================= */}
-      {/* Step 5: OTP ভেরিফিকেশন */}
-      {/* ================================================= */}
+      {/* Step 5: OTP */}
       {currentStep === 5 && (
         <div style={styles.body}>
           <div style={styles.otpSuccessIcon}><span style={styles.otpSuccessIconText}>✉️</span></div>
-
           <div style={styles.otpMessageBox}>
             <h3 style={styles.otpMessageTitle}>আপনার জিমেইলে কোড পাঠানো হয়েছে</h3>
             <p style={styles.otpMessageText}>আমরা <strong style={styles.otpMessageEmail}>{contact.email}</strong> ঠিকানায় ৬ সংখ্যার একটি ভেরিফিকেশন কোড পাঠিয়েছি।</p>
@@ -1027,7 +704,6 @@ function JobSeekerRegisterForm({ onClose }) {
             {!sendingOtp && sendError && <p style={styles.otpMessageError}>⚠️ {sendError}</p>}
             {!sendingOtp && !sendError && <p style={styles.otpMessageHint}>✓ জিমেইল চেক করে কোডটি লিখুন। স্প্যাম ফোল্ডারেও দেখুন।</p>}
           </div>
-
           <div style={styles.field} id="field-otp">
             <label style={styles.label}>ভেরিফিকেশন কোড লিখুন <span style={styles.required}>*</span></label>
             <div style={styles.otpRow}>
@@ -1037,46 +713,36 @@ function JobSeekerRegisterForm({ onClose }) {
             </div>
             {errors.otp && <p style={styles.errorText}>{errors.otp}</p>}
           </div>
-
           {savingData && <p style={styles.savingText}>⏳ আপনার তথ্য সংরক্ষণ করা হচ্ছে...</p>}
-
           {!savingData && (
             <div style={styles.otpTimerRow}>
-              {!resendDisabled ? (
-                <button type="button" style={styles.resendBtn} onClick={handleResendOtp} disabled={sendingOtp}>🔄 কোড পুনরায় পাঠান</button>
-              ) : (
-                <p style={styles.otpTimerText}>পুনরায় পাঠাতে অপেক্ষা করুন: <strong>{otpTimer} সেকেন্ড</strong></p>
-              )}
+              {!resendDisabled ? <button type="button" style={styles.resendBtn} onClick={handleResendOtp} disabled={sendingOtp}>🔄 কোড পুনরায় পাঠান</button> : <p style={styles.otpTimerText}>পুনরায় পাঠাতে অপেক্ষা করুন: <strong>{otpTimer} সেকেন্ড</strong></p>}
             </div>
           )}
         </div>
       )}
 
-      {/* ---------- নিচের বাটন ---------- */}
+      {/* বাটন */}
       <div style={styles.footer}>
         {currentStep === 1 && <button style={styles.btnNext} onClick={handleNextFromStep1}>পরবর্তী ধাপ →</button>}
-
         {currentStep === 2 && (
           <div style={styles.footerRow}>
             <button style={styles.btnBack} onClick={handleBackFromStep2}>← পূর্ববর্তী</button>
             <button style={styles.btnNextHalf} onClick={handleNextFromStep2}>পরবর্তী ধাপ →</button>
           </div>
         )}
-
         {currentStep === 3 && (
           <div style={styles.footerRow}>
             <button style={styles.btnBack} onClick={handleBackFromStep3}>← পূর্ববর্তী</button>
             <button style={styles.btnNextHalf} onClick={handleNextFromStep3}>পরবর্তী ধাপ →</button>
           </div>
         )}
-
         {currentStep === 4 && (
           <div style={styles.footerRow}>
             <button style={styles.btnBack} onClick={handleBackFromStep4}>← পূর্ববর্তী</button>
             <button style={styles.btnConfirm} onClick={handleConfirmFromStep4}>কনফার্ম করুন</button>
           </div>
         )}
-
         {currentStep === 5 && (
           <div style={styles.footerRow}>
             {!savingData && !showSuccessPopup && (
@@ -1089,9 +755,7 @@ function JobSeekerRegisterForm({ onClose }) {
         )}
       </div>
 
-      {/* ================================================= */}
       {/* সফল পপআপ */}
-      {/* ================================================= */}
       {showSuccessPopup && (
         <div style={styles.successOverlay}>
           <div style={styles.successBox}>
@@ -1118,9 +782,6 @@ function JobSeekerRegisterForm({ onClose }) {
   )
 }
 
-// =====================================================
-// স্টাইল (একই ফাইলে)
-// =====================================================
 const styles = {
   wrapper: { minHeight: '100vh', width: '100%', background: '#f5f7fa', display: 'flex', flexDirection: 'column', overflowX: 'hidden', animation: 'formFadeIn 0.4s ease-out' },
   header: { position: 'sticky', top: 0, zIndex: 50, background: 'linear-gradient(135deg, #0a1f44 0%, #16346b 100%)', color: '#ffffff', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 2px 10px rgba(10, 31, 68, 0.20)' },
@@ -1144,7 +805,8 @@ const styles = {
   errorText: { fontSize: '12px', color: '#d93636', margin: 0, marginTop: '2px', fontFamily: "'Hind Siliguri', sans-serif", fontWeight: 500 },
   infoBox: { background: 'rgba(212, 165, 55, 0.10)', borderLeft: '4px solid #d4a537', borderRadius: '8px', padding: '12px 14px' },
   infoBoxText: { fontSize: '13px', color: '#0a1f44', margin: 0, lineHeight: 1.6, fontFamily: "'Hind Siliguri', sans-serif", fontWeight: 500 },
-  
+  passwordWrapper: { position: 'relative' },
+  eyeBtn: { position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', fontSize: '18px', cursor: 'pointer', padding: '6px' },
   profileImageWrapper: { display: 'flex', justifyContent: 'center', marginTop: '6px', marginBottom: '4px' },
   profileImageContainer: { position: 'relative', width: '130px', height: '130px' },
   profileImagePreview: { width: '130px', height: '130px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #d4a537', boxShadow: '0 6px 18px rgba(212, 165, 55, 0.35)', display: 'block' },
@@ -1152,13 +814,11 @@ const styles = {
   profileImageAddBtn: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', width: '130px', height: '130px', borderRadius: '50%', border: '3px dashed #d4a537', background: 'rgba(212, 165, 55, 0.06)', cursor: 'pointer', transition: 'all 0.2s ease' },
   profileImageIcon: { width: '44px', height: '44px', borderRadius: '50%', background: 'linear-gradient(135deg, #0a1f44, #16346b)', color: '#ffffff', fontSize: '26px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(10,31,68,0.20)' },
   profileImageText: { fontSize: '11px', color: '#0a1f44', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif", textAlign: 'center', padding: '0 6px' },
-
   thanaWrapper: { position: 'relative' },
   thanaDropdown: { position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, maxHeight: '220px', overflowY: 'auto', background: '#ffffff', borderRadius: '12px', boxShadow: '0 8px 24px rgba(10, 31, 68, 0.15)', border: '1px solid #e2e6ee', zIndex: 100, padding: '6px', animation: 'dropdownIn 0.2s ease-out' },
   thanaOption: { width: '100%', padding: '11px 12px', background: 'transparent', border: 'none', borderRadius: '8px', textAlign: 'left', fontSize: '14px', color: '#1a1a1a', fontFamily: "'Hind Siliguri', sans-serif", cursor: 'pointer', transition: 'background 0.15s ease' },
   thanaOptionActive: { background: 'rgba(212, 165, 55, 0.15)', color: '#0a1f44', fontWeight: 600 },
   noResult: { fontSize: '13px', color: '#8a92a2', textAlign: 'center', padding: '14px', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" },
-  
   previewGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '10px', marginBottom: '12px' },
   previewItem: { position: 'relative', width: '100%', aspectRatio: '1 / 1', borderRadius: '12px', overflow: 'hidden', background: '#f0f2f6', border: '1.5px solid #e2e6ee' },
   previewImage: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
@@ -1176,16 +836,13 @@ const styles = {
   fileInputHidden: { display: 'none' },
   addIcon: { width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #0a1f44, #16346b)', color: '#ffffff', fontSize: '22px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(10,31,68,0.20)' },
   addText: { fontSize: '13px', color: '#0a1f44', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" },
-  
   idTypeRow: { display: 'flex', gap: '10px', marginTop: '4px' },
   idTypeBtn: { flex: 1, padding: '14px 10px', borderRadius: '12px', border: '2px solid #e2e6ee', background: '#ffffff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', cursor: 'pointer', transition: 'all 0.2s ease' },
   idTypeBtnActive: { borderColor: '#d4a537', background: 'rgba(212, 165, 55, 0.08)', boxShadow: '0 4px 12px rgba(212, 165, 55, 0.20)' },
   idTypeIcon: { fontSize: '24px' },
   idTypeLabel: { fontSize: '13px', fontWeight: 600, color: '#0a1f44', fontFamily: "'Hind Siliguri', sans-serif" },
-
   expRow: { display: 'flex', gap: '10px' },
   expCol: { flex: 1 },
-
   otpSuccessIcon: { width: '90px', height: '90px', borderRadius: '50%', background: 'linear-gradient(135deg, #d4a537, #e6c267)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '8px auto 4px', boxShadow: '0 8px 24px rgba(212, 165, 55, 0.35)' },
   otpSuccessIconText: { fontSize: '42px' },
   otpMessageBox: { background: '#ffffff', borderRadius: '16px', padding: '20px 18px', textAlign: 'center', boxShadow: '0 4px 14px rgba(10, 31, 68, 0.08)', borderTop: '4px solid #d4a537' },
@@ -1202,14 +859,12 @@ const styles = {
   otpTimerText: { fontSize: '12.5px', color: '#5a6472', margin: 0, fontFamily: "'Hind Siliguri', sans-serif", textAlign: 'center' },
   resendBtn: { padding: '10px 18px', borderRadius: '10px', background: 'rgba(212, 165, 55, 0.10)', color: '#0a1f44', fontSize: '13px', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif", border: '1.5px solid #d4a537', cursor: 'pointer', transition: 'all 0.2s ease' },
   savingText: { fontSize: '13px', color: '#0a1f44', fontWeight: 600, textAlign: 'center', margin: '8px 0', fontFamily: "'Hind Siliguri', sans-serif" },
-  
   footer: { position: 'sticky', bottom: 0, background: '#ffffff', padding: '14px 16px', borderTop: '1px solid #e2e6ee', boxShadow: '0 -4px 14px rgba(10, 31, 68, 0.06)' },
   footerRow: { display: 'flex', gap: '10px', maxWidth: '480px', margin: '0 auto' },
   btnNext: { width: '100%', maxWidth: '480px', margin: '0 auto', display: 'block', padding: '15px 20px', borderRadius: '12px', background: 'linear-gradient(135deg, #0a1f44, #16346b)', color: '#ffffff', fontSize: '16px', fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif", border: 'none', cursor: 'pointer', boxShadow: '0 6px 16px rgba(10, 31, 68, 0.25)', letterSpacing: '0.3px' },
   btnNextHalf: { flex: 1, padding: '15px 20px', borderRadius: '12px', background: 'linear-gradient(135deg, #0a1f44, #16346b)', color: '#ffffff', fontSize: '15px', fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif", border: 'none', cursor: 'pointer', boxShadow: '0 6px 16px rgba(10, 31, 68, 0.25)', letterSpacing: '0.3px' },
   btnConfirm: { flex: 1, padding: '15px 20px', borderRadius: '12px', background: 'linear-gradient(135deg, #d4a537, #e6c267)', color: '#0a1f44', fontSize: '15px', fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif", border: 'none', cursor: 'pointer', boxShadow: '0 6px 16px rgba(212, 165, 55, 0.35)', letterSpacing: '0.3px' },
   btnBack: { flex: 1, padding: '15px 20px', borderRadius: '12px', background: '#ffffff', color: '#0a1f44', fontSize: '15px', fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif", border: '2px solid #0a1f44', cursor: 'pointer', letterSpacing: '0.3px' },
-  
   successOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(10, 31, 68, 0.75)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 9999, animation: 'successOverlayIn 0.3s ease-out' },
   successBox: { width: '100%', maxWidth: '400px', background: '#ffffff', borderRadius: '24px', padding: '32px 24px 24px', textAlign: 'center', boxShadow: '0 24px 60px rgba(0, 0, 0, 0.35)', animation: 'successBoxIn 0.4s ease-out' },
   successIconWrapper: { display: 'flex', justifyContent: 'center', marginBottom: '18px' },
