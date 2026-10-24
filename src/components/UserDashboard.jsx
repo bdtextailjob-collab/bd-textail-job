@@ -7,8 +7,11 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 function UserDashboard({ user: initialUser, onLogout }) {
   const [user, setUser] = useState(initialUser)
+  
+  // অ্যাক্টিভ ট্যাব (হোম, মেসেজ, নোটিফিকেশন ইত্যাদি)
+  const [activeTab, setActiveTab] = useState('home')
 
-  // রিয়েল-টাইম সাবস্ক্রিপশন (যদি অ্যাডমিন মাঝপথে স্ট্যাটাস পরিবর্তন করে, তবে ইউজার লগআউট হয়ে যাবে)
+  // রিয়েল-টাইম সাবস্ক্রিপশন (স্ট্যাটাস পরিবর্তন হলে লগআউট করার জন্য)
   useEffect(() => {
     const channel = supabase
       .channel(`user-status-${user.id}`)
@@ -19,7 +22,7 @@ function UserDashboard({ user: initialUser, onLogout }) {
           const newStatus = payload.new.status
           if (newStatus === 'suspended' || newStatus === 'blocked' || newStatus === 'disabled') {
             alert('আপনার অ্যাকাউন্টে পরিবর্তন এসেছে। দয়া করে আবার লগইন করুন।')
-            onLogout() // সাথে সাথে লগআউট করে দেবে
+            onLogout()
           } else {
             setUser(payload.new)
           }
@@ -32,92 +35,214 @@ function UserDashboard({ user: initialUser, onLogout }) {
   }, [user.id])
 
   return (
-    <div style={styles.page}>
-      <header style={styles.header}>
-        <div style={styles.headerInner}>
-          <div style={styles.logoRow}>
-            <div style={styles.logoCircle}>BT</div>
-            <div>
-              <p style={styles.headerTitle}>BD Textail Job</p>
-              <p style={styles.headerSubtitle}>আমার ড্যাশবোর্ড</p>
-            </div>
-          </div>
-          <button style={styles.logoutBtn} onClick={onLogout}>লগআউট</button>
+    <div style={styles.appWrapper}>
+      {/* ========================================== */}
+      {/* ১. উপরের হেডার (Top Bar) */}
+      {/* ========================================== */}
+      <header style={styles.topBar}>
+        <h1 style={styles.appLogo}>BD Textail Job</h1>
+        <div style={styles.topIcons}>
+          <button style={styles.iconBtn}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0a1f44" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+          <button style={styles.iconBtn}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0a1f44" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </button>
+          <button style={styles.iconBtn}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0a1f44" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
         </div>
       </header>
 
-      <main style={styles.main}>
-        {/* প্রোফাইল কার্ড (স্ট্যাটাস ব্যাজ ছাড়া) */}
-        <section style={styles.profileCard}>
-          <img src={user.profile_image_url} alt={user.name} style={styles.profileImage} />
-          <h2 style={styles.userName}>{user.name}</h2>
-          <p style={styles.userEmail}>{user.email}</p>
-          <p style={styles.userMobile}>📱 {user.mobile}</p>
-          
-          {user.status === 'pending' && (
-            <p style={{ ...styles.statusMessage, color: '#d4a537' }}>
-              আপনার অ্যাকাউন্টটি সাপোর্ট টিম যাচাই করছেন। অপেক্ষা করুন।
-            </p>
-          )}
-          {user.status === 'approved' && (
-            <p style={{ ...styles.statusMessage, color: '#1e9d5a' }}>
-              🎉 অভিনন্দন! আপনার অ্যাকাউন্ট অনুমোদিত হয়েছে।
-            </p>
-          )}
-          {user.status === 'rejected' && (
-            <p style={{ ...styles.statusMessage, color: '#d93636' }}>
-              আপনার অ্যাকাউন্টটি বাতিল করা হয়েছে। সাপোর্টে যোগাযোগ করুন।
-            </p>
-          )}
-        </section>
+      {/* ========================================== */}
+      {/* ২. মূল কন্টেন্ট এরিয়া (Main Content) */}
+      {/* ========================================== */}
+      <main style={styles.mainContent}>
+        
+        {/* হোম ট্যাব (এখানে পরে আমরা জব লিস্ট বা অন্যান্য ফিচার বসাবো) */}
+        {activeTab === 'home' && (
+          <div style={styles.emptyStateContainer}>
+             {/* আপাতত ফাঁকা, পরে আপনার নির্দেশমতো ডিজাইন করা হবে */}
+            <p style={styles.emptyStateText}>Input Your Message</p>
+          </div>
+        )}
 
-        <section style={styles.infoCard}>
-          <p style={styles.infoTitle}>আপনার তথ্য</p>
-          <div style={styles.infoRow}><span style={styles.infoLabel}>বাবার নাম</span><span style={styles.infoValue}>{user.father_name}</span></div>
-          <div style={styles.infoRow}><span style={styles.infoLabel}>মায়ের নাম</span><span style={styles.infoValue}>{user.mother_name}</span></div>
-          <div style={styles.infoRow}><span style={styles.infoLabel}>ঠিকানা</span><span style={styles.infoValue}>{user.village}, {user.thana}, {user.district}</span></div>
-          <div style={styles.infoRow}><span style={styles.infoLabel}>শিক্ষা</span><span style={styles.infoValue}>{user.education_level}</span></div>
-          {user.user_type === 'job_seeker' && user.industry_type && (
-            <div style={styles.infoRow}><span style={styles.infoLabel}>ইন্ডাস্ট্রি</span><span style={styles.infoValue}>{user.industry_type}</span></div>
-          )}
-          {user.user_type === 'job_seeker' && user.designation && (
-            <div style={styles.infoRow}><span style={styles.infoLabel}>পদবী</span><span style={styles.infoValue}>{user.designation}</span></div>
-          )}
-        </section>
+        {/* অন্যান্য ট্যাবের জন্য প্লেসহোল্ডার */}
+        {activeTab !== 'home' && (
+          <div style={styles.emptyStateContainer}>
+            <p style={styles.emptyStateText}>
+              {activeTab === 'community' && 'Community Page'}
+              {activeTab === 'message' && 'Messages Page'}
+              {activeTab === 'notification' && 'Notifications Page'}
+              {activeTab === 'profile' && 'Profile Page'}
+            </p>
+          </div>
+        )}
 
-        <section style={styles.comingSoonCard}>
-          <p style={styles.comingSoonTitle}>🔔 শীঘ্রই আসছে</p>
-          <p style={styles.comingSoonText}>চাকরির আবেদন, নোটিফিকেশন, চ্যাট — সব সুবিধা শীঘ্রই যুক্ত হবে।</p>
-        </section>
       </main>
+
+      {/* ========================================== */}
+      {/* ৩. নিচের নেভিগেশন বার (Bottom Navigation) */}
+      {/* ========================================== */}
+      <nav style={styles.bottomNav}>
+        {/* হোম */}
+        <button style={styles.navBtn} onClick={() => setActiveTab('home')}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'home' ? "#1877F2" : "none"} stroke={activeTab === 'home' ? "#1877F2" : "#5a6472"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            {activeTab !== 'home' && <polyline points="9 22 9 12 15 12 15 22"></polyline>}
+            {activeTab === 'home' && <polyline points="9 22 9 12 15 12 15 22" stroke="#ffffff"></polyline>}
+          </svg>
+        </button>
+
+        {/* কমিউনিটি */}
+        <button style={styles.navBtn} onClick={() => setActiveTab('community')}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'community' ? "#1877F2" : "none"} stroke={activeTab === 'community' ? "#1877F2" : "#5a6472"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+        </button>
+
+        {/* মেসেজ (নোটিফিকেশন ব্যাজ সহ) */}
+        <button style={styles.navBtn} onClick={() => setActiveTab('message')}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'message' ? "#1877F2" : "none"} stroke={activeTab === 'message' ? "#1877F2" : "#5a6472"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+          </svg>
+          <span style={styles.badge}>1</span>
+        </button>
+
+        {/* নোটিফিকেশন */}
+        <button style={styles.navBtn} onClick={() => setActiveTab('notification')}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'notification' ? "#1877F2" : "none"} stroke={activeTab === 'notification' ? "#1877F2" : "#5a6472"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span style={styles.badge}>8</span>
+        </button>
+
+        {/* প্রোফাইল */}
+        <button style={styles.navBtn} onClick={() => setActiveTab('profile')}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'profile' ? "#1877F2" : "none"} stroke={activeTab === 'profile' ? "#1877F2" : "#5a6472"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </button>
+      </nav>
     </div>
   )
 }
 
+// =====================================================
+// স্টাইল (প্রিমিয়াম অ্যাপ লুক)
+// =====================================================
 const styles = {
-  page: { minHeight: '100vh', width: '100%', background: '#f5f7fa', display: 'flex', flexDirection: 'column' },
-  header: { position: 'sticky', top: 0, zIndex: 50, background: 'linear-gradient(135deg, #0a1f44 0%, #16346b 100%)', padding: '14px 16px', boxShadow: '0 2px 10px rgba(10, 31, 68, 0.15)' },
-  headerInner: { maxWidth: '480px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  logoRow: { display: 'flex', alignItems: 'center', gap: '10px' },
-  logoCircle: { width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, #d4a537, #e6c267)', color: '#0a1f44', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '14px', fontFamily: "'Poppins', sans-serif" },
-  headerTitle: { fontSize: '14px', fontWeight: 700, color: '#ffffff', margin: 0, fontFamily: "'Poppins', sans-serif" },
-  headerSubtitle: { fontSize: '11px', color: '#e6c267', margin: '2px 0 0', fontFamily: "'Hind Siliguri', sans-serif" },
-  logoutBtn: { padding: '8px 14px', borderRadius: '8px', background: 'rgba(255,255,255,0.15)', color: '#ffffff', fontSize: '12px', fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: "'Hind Siliguri', sans-serif" },
-  main: { flex: 1, maxWidth: '480px', width: '100%', margin: '0 auto', padding: '18px 16px 32px', display: 'flex', flexDirection: 'column', gap: '14px' },
-  profileCard: { background: '#ffffff', borderRadius: '20px', padding: '24px 20px', textAlign: 'center', boxShadow: '0 6px 20px rgba(10, 31, 68, 0.08)', borderTop: '4px solid #d4a537' },
-  profileImage: { width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #d4a537', margin: '0 auto 12px', display: 'block', boxShadow: '0 6px 18px rgba(212, 165, 55, 0.30)' },
-  userName: { fontSize: '19px', fontWeight: 700, color: '#0a1f44', margin: '0 0 4px', fontFamily: "'Hind Siliguri', sans-serif" },
-  userEmail: { fontSize: '13px', color: '#5a6472', margin: '0 0 4px', fontFamily: "'Poppins', sans-serif", wordBreak: 'break-all' },
-  userMobile: { fontSize: '13px', color: '#5a6472', margin: '0 0 16px', fontFamily: "'Hind Siliguri', sans-serif" },
-  statusMessage: { fontSize: '13.5px', margin: '8px 0 0', lineHeight: 1.65, fontFamily: "'Hind Siliguri', sans-serif", fontWeight: 600 },
-  infoCard: { background: '#ffffff', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 14px rgba(10, 31, 68, 0.06)' },
-  infoTitle: { fontSize: '14px', fontWeight: 700, color: '#0a1f44', margin: '0 0 14px', paddingBottom: '10px', borderBottom: '1.5px solid #e2e6ee', fontFamily: "'Hind Siliguri', sans-serif" },
-  infoRow: { display: 'flex', justifyContent: 'space-between', padding: '7px 0', fontSize: '13px', fontFamily: "'Hind Siliguri', sans-serif", gap: '10px' },
-  infoLabel: { color: '#8a92a2', fontWeight: 500, flexShrink: 0 },
-  infoValue: { color: '#0a1f44', fontWeight: 600, textAlign: 'right' },
-  comingSoonCard: { background: 'rgba(212, 165, 55, 0.10)', border: '1.5px dashed #d4a537', borderRadius: '16px', padding: '16px', textAlign: 'center' },
-  comingSoonTitle: { fontSize: '13px', fontWeight: 700, color: '#8a6a1f', margin: '0 0 6px', fontFamily: "'Hind Siliguri', sans-serif" },
-  comingSoonText: { fontSize: '12px', color: '#5a6472', margin: 0, lineHeight: 1.6, fontFamily: "'Hind Siliguri', sans-serif" },
+  appWrapper: {
+    minHeight: '100vh',
+    width: '100%',
+    background: '#f5f7fa',
+    display: 'flex',
+    flexDirection: 'column',
+    overflowX: 'hidden',
+    position: 'relative'
+  },
+  topBar: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 50,
+    background: '#ffffff',
+    padding: '12px 16px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)'
+  },
+  appLogo: {
+    fontSize: '24px',
+    fontWeight: 700,
+    color: '#1877F2', // স্কাই ব্লু (Facebook-এর মতো রঙ)
+    margin: 0,
+    fontFamily: "'Poppins', sans-serif",
+    letterSpacing: '-0.5px'
+  },
+  topIcons: {
+    display: 'flex',
+    gap: '8px'
+  },
+  iconBtn: {
+    width: '38px',
+    height: '38px',
+    borderRadius: '50%',
+    background: '#f0f2f6',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: 'none',
+    cursor: 'pointer'
+  },
+  mainContent: {
+    flex: 1,
+    padding: '16px',
+    paddingBottom: '80px', // নিচের নেভিগেশনের জন্য জায়গা
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  emptyStateContainer: {
+    flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#ffffff',
+    borderRadius: '16px',
+    border: '1.5px dashed #e2e6ee',
+    marginTop: '10px'
+  },
+  emptyStateText: {
+    fontSize: '22px',
+    color: '#e2e6ee',
+    fontWeight: 700,
+    fontFamily: "'Hind Siliguri', sans-serif",
+    textAlign: 'center'
+  },
+  bottomNav: {
+    position: 'fixed',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    background: '#ffffff',
+    display: 'flex',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    padding: '8px 0',
+    boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.05)',
+    zIndex: 50
+  },
+  navBtn: {
+    position: 'relative',
+    background: 'transparent',
+    border: 'none',
+    padding: '10px 20px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  badge: {
+    position: 'absolute',
+    top: '2px',
+    right: '10px',
+    background: '#d93636',
+    color: '#ffffff',
+    fontSize: '10px',
+    fontWeight: 700,
+    minWidth: '18px',
+    height: '18px',
+    borderRadius: '9px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: '2px solid #ffffff'
+  }
 }
 
 export default UserDashboard
