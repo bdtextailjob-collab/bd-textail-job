@@ -7,11 +7,9 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 function UserDashboard({ user: initialUser, onLogout }) {
   const [user, setUser] = useState(initialUser)
-  
-  // অ্যাক্টিভ ট্যাব (হোম, মেসেজ, নোটিফিকেশন ইত্যাদি)
   const [activeTab, setActiveTab] = useState('home')
 
-  // রিয়েল-টাইম সাবস্ক্রিপশন (স্ট্যাটাস পরিবর্তন হলে লগআউট করার জন্য)
+  // রিয়েল-টাইম সাবস্ক্রিপশন
   useEffect(() => {
     const channel = supabase
       .channel(`user-status-${user.id}`)
@@ -44,24 +42,24 @@ function UserDashboard({ user: initialUser, onLogout }) {
         <h1 style={styles.appLogo}>BD Textail Job</h1>
         <div style={styles.topIcons}>
           <button style={styles.iconBtn}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0a1f44" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0a1f44" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
           <button style={styles.iconBtn}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0a1f44" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0a1f44" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           </button>
           <button style={styles.iconBtn}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0a1f44" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0a1f44" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
           </button>
         </div>
       </header>
 
       {/* ========================================== */}
-      {/* ২. নেভিগেশন বার (উপরে আনা হয়েছে) */}
+      {/* ২. নেভিগেশন বার (প্রিমিয়াম ব্র্যান্ড স্টাইল) */}
       {/* ========================================== */}
       <nav style={styles.topNav}>
         {/* হোম */}
-        <button style={styles.navBtn} onClick={() => setActiveTab('home')}>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill={activeTab === 'home' ? "#1877F2" : "none"} stroke={activeTab === 'home' ? "#1877F2" : "#5a6472"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <button style={{ ...styles.navBtn, ...(activeTab === 'home' ? styles.navBtnActive : {}) }} onClick={() => setActiveTab('home')}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'home' ? "#0a1f44" : "none"} stroke={activeTab === 'home' ? "#0a1f44" : "#5a6472"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
             {activeTab !== 'home' && <polyline points="9 22 9 12 15 12 15 22"></polyline>}
             {activeTab === 'home' && <polyline points="9 22 9 12 15 12 15 22" stroke="#ffffff"></polyline>}
@@ -69,8 +67,8 @@ function UserDashboard({ user: initialUser, onLogout }) {
         </button>
 
         {/* কমিউনিটি */}
-        <button style={styles.navBtn} onClick={() => setActiveTab('community')}>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill={activeTab === 'community' ? "#1877F2" : "none"} stroke={activeTab === 'community' ? "#1877F2" : "#5a6472"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <button style={{ ...styles.navBtn, ...(activeTab === 'community' ? styles.navBtnActive : {}) }} onClick={() => setActiveTab('community')}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'community' ? "#0a1f44" : "none"} stroke={activeTab === 'community' ? "#0a1f44" : "#5a6472"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
             <circle cx="9" cy="7" r="4"></circle>
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -79,16 +77,16 @@ function UserDashboard({ user: initialUser, onLogout }) {
         </button>
 
         {/* মেসেজ */}
-        <button style={styles.navBtn} onClick={() => setActiveTab('message')}>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill={activeTab === 'message' ? "#1877F2" : "none"} stroke={activeTab === 'message' ? "#1877F2" : "#5a6472"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <button style={{ ...styles.navBtn, ...(activeTab === 'message' ? styles.navBtnActive : {}) }} onClick={() => setActiveTab('message')}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'message' ? "#0a1f44" : "none"} stroke={activeTab === 'message' ? "#0a1f44" : "#5a6472"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
           </svg>
           <span style={styles.badge}>1</span>
         </button>
 
         {/* নোটিফিকেশন */}
-        <button style={styles.navBtn} onClick={() => setActiveTab('notification')}>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill={activeTab === 'notification' ? "#1877F2" : "none"} stroke={activeTab === 'notification' ? "#1877F2" : "#5a6472"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <button style={{ ...styles.navBtn, ...(activeTab === 'notification' ? styles.navBtnActive : {}) }} onClick={() => setActiveTab('notification')}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'notification' ? "#0a1f44" : "none"} stroke={activeTab === 'notification' ? "#0a1f44" : "#5a6472"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
           </svg>
@@ -96,8 +94,8 @@ function UserDashboard({ user: initialUser, onLogout }) {
         </button>
 
         {/* প্রোফাইল */}
-        <button style={styles.navBtn} onClick={() => setActiveTab('profile')}>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill={activeTab === 'profile' ? "#1877F2" : "none"} stroke={activeTab === 'profile' ? "#1877F2" : "#5a6472"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <button style={{ ...styles.navBtn, ...(activeTab === 'profile' ? styles.navBtnActive : {}) }} onClick={() => setActiveTab('profile')}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'profile' ? "#0a1f44" : "none"} stroke={activeTab === 'profile' ? "#0a1f44" : "#5a6472"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
             <circle cx="12" cy="7" r="4"></circle>
           </svg>
@@ -105,13 +103,13 @@ function UserDashboard({ user: initialUser, onLogout }) {
       </nav>
 
       {/* ========================================== */}
-      {/* ৩. মূল কন্টেন্ট এরিয়া (মাঝখানে) */}
+      {/* ৩. মূল কন্টেন্ট এরিয়া */}
       {/* ========================================== */}
       <main style={styles.mainContent}>
         
         {activeTab === 'home' && (
           <div style={styles.emptyContent}>
-            {/* এখানে আমরা পরে আপনার নির্দেশমতো ডিজাইন বসাবো */}
+             {/* এখানে পরবর্তী ডিজাইন বসবে */}
           </div>
         )}
 
@@ -132,7 +130,7 @@ function UserDashboard({ user: initialUser, onLogout }) {
 }
 
 // =====================================================
-// স্টাইল (প্রিমিয়াম অ্যাপ লুক)
+// স্টাইল (প্রিমিয়াম ব্র্যান্ড কালার)
 // =====================================================
 const styles = {
   appWrapper: {
@@ -147,30 +145,30 @@ const styles = {
     position: 'sticky',
     top: 0,
     zIndex: 50,
-    background: '#ffffff',
-    padding: '12px 16px',
+    background: 'linear-gradient(135deg, #0a1f44 0%, #16346b 100%)',
+    padding: '14px 16px',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottom: '1px solid #f0f2f6'
+    boxShadow: '0 2px 10px rgba(10, 31, 68, 0.20)',
   },
   appLogo: {
-    fontSize: '24px',
+    fontSize: '20px',
     fontWeight: 700,
-    color: '#1877F2', 
+    color: '#ffffff',
     margin: 0,
     fontFamily: "'Poppins', sans-serif",
-    letterSpacing: '-0.5px'
+    letterSpacing: '0.5px'
   },
   topIcons: {
     display: 'flex',
     gap: '8px'
   },
   iconBtn: {
-    width: '38px',
-    height: '38px',
+    width: '34px',
+    height: '34px',
     borderRadius: '50%',
-    background: '#f0f2f6',
+    background: 'rgba(255, 255, 255, 0.12)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -184,19 +182,26 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-around',
     alignItems: 'center',
-    padding: '8px 0',
-    boxShadow: '0 4px 10px -5px rgba(0, 0, 0, 0.05)',
-    zIndex: 40
+    padding: '10px 0',
+    boxShadow: '0 4px 10px -5px rgba(0, 0, 0, 0.08)',
+    zIndex: 40,
+    borderBottom: '1px solid #e2e6ee'
   },
   navBtn: {
     position: 'relative',
     background: 'transparent',
     border: 'none',
-    padding: '10px 20px',
+    padding: '8px 18px',
+    borderRadius: '12px',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    transition: 'all 0.2s ease'
+  },
+  navBtnActive: {
+    background: 'rgba(212, 165, 55, 0.20)', // হালকা সোনালি গ্লো
+    padding: '8px 24px'
   },
   badge: {
     position: 'absolute',
@@ -230,12 +235,12 @@ const styles = {
     justifyContent: 'center',
     background: '#ffffff',
     borderRadius: '16px',
-    border: '1.5px dashed #e2e6ee',
+    boxShadow: '0 4px 14px rgba(10, 31, 68, 0.06)',
     minHeight: '300px'
   },
   placeholderText: {
-    fontSize: '20px',
-    color: '#e2e6ee',
+    fontSize: '18px',
+    color: '#d4a537',
     fontWeight: 700,
     fontFamily: "'Hind Siliguri', sans-serif",
   }
