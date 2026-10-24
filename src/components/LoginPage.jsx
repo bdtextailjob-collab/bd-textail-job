@@ -11,6 +11,9 @@ function LoginPage({ onLoginSuccess, onClose }) {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  
+  // পপআপ স্টেট
+  const [blockedPopup, setBlockedPopup] = useState(null)
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -22,7 +25,6 @@ function LoginPage({ onLoginSuccess, onClose }) {
     setLoading(true)
 
     try {
-      // Supabase থেকে ইউজার খোঁজা
       const { data, error: fetchError } = await supabase
         .from('users')
         .select('*')
@@ -36,9 +38,17 @@ function LoginPage({ onLoginSuccess, onClose }) {
         return
       }
 
+      // স্ট্যাটাস চেক
+      if (data.status === 'suspended' || data.status === 'blocked' || data.status === 'disabled') {
+        setBlockedPopup(data.status)
+        setLoading(false)
+        return
+      }
+
       // সফল লগইন
       setLoading(false)
       onLoginSuccess(data)
+      
     } catch (err) {
       console.error(err)
       setError('লগইন করতে সমস্যা হয়েছে, আবার চেষ্টা করুন।')
@@ -46,13 +56,19 @@ function LoginPage({ onLoginSuccess, onClose }) {
     }
   }
 
+  // পপআপ মেসেজ
+  const getPopupMessage = (status) => {
+    if (status === 'suspended') return 'আপনার অ্যাকাউন্টটি সাময়িকভাবে সাসপেন্ড করা হয়েছে। অনুগ্রহ করে সাপোর্ট টিমের সাথে যোগাযোগ করুন।'
+    if (status === 'blocked') return 'দুঃখিত, আপনার অ্যাকাউন্টটি ব্লক করা হয়েছে। বিস্তারিত জানতে সাপোর্টে যোগাযোগ করুন।'
+    if (status === 'disabled') return 'আপনার অ্যাকাউন্টটি নিষ্ক্রিয় (Disable) করা হয়েছে। সাপোর্টে যোগাযোগ করুন।'
+    return ''
+  }
+
   return (
     <div style={styles.wrapper}>
-      {/* উপরে ক্লোজ বাটন */}
       <button style={styles.closeBtn} onClick={onClose} aria-label="বন্ধ">✕</button>
 
       <div style={styles.loginBox}>
-        {/* লোগো */}
         <div style={styles.logoArea}>
           <div style={styles.logoCircle}>BT</div>
           <h1 style={styles.title}>BD Textail Job</h1>
@@ -60,7 +76,6 @@ function LoginPage({ onLoginSuccess, onClose }) {
         </div>
 
         <form onSubmit={handleLogin} style={styles.form}>
-          {/* ইমেইল */}
           <div style={styles.field}>
             <label style={styles.label}>জিমেইল এড্রেস</label>
             <input
@@ -74,7 +89,6 @@ function LoginPage({ onLoginSuccess, onClose }) {
             />
           </div>
 
-          {/* পাসওয়ার্ড */}
           <div style={styles.field}>
             <label style={styles.label}>পাসওয়ার্ড</label>
             <div style={styles.passwordWrapper}>
@@ -103,6 +117,18 @@ function LoginPage({ onLoginSuccess, onClose }) {
           অ্যাকাউন্ট নেই? হোমপেজে ফিরে "অ্যাকাউন্ট করুন" চাপুন।
         </p>
       </div>
+
+      {/* অ্যাকশন পপআপ */}
+      {blockedPopup && (
+        <div style={styles.popupOverlay}>
+          <div style={styles.popupBox}>
+            <div style={styles.popupIcon}>🚫</div>
+            <h3 style={styles.popupTitle}>অ্যাক্সেস ব্লকড</h3>
+            <p style={styles.popupMessage}>{getPopupMessage(blockedPopup)}</p>
+            <button style={styles.popupBtn} onClick={() => setBlockedPopup(null)}>ঠিক আছে</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -125,6 +151,14 @@ const styles = {
   errorText: { fontSize: '12.5px', color: '#d93636', margin: 0, fontFamily: "'Hind Siliguri', sans-serif", fontWeight: 500 },
   loginBtn: { width: '100%', padding: '15px 20px', marginTop: '6px', borderRadius: '12px', background: 'linear-gradient(135deg, #0a1f44, #16346b)', color: '#ffffff', fontSize: '16px', fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif", border: 'none', cursor: 'pointer', boxShadow: '0 6px 16px rgba(10,31,68,0.25)' },
   footerNote: { fontSize: '12px', color: '#8a92a2', textAlign: 'center', margin: '18px 0 0', fontFamily: "'Hind Siliguri', sans-serif" },
+
+  // পপআপ স্টাইল
+  popupOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(10, 31, 68, 0.85)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 9999 },
+  popupBox: { width: '100%', maxWidth: '360px', background: '#ffffff', borderRadius: '20px', padding: '30px 24px 24px', textAlign: 'center', boxShadow: '0 24px 60px rgba(0, 0, 0, 0.35)' },
+  popupIcon: { fontSize: '50px', marginBottom: '12px' },
+  popupTitle: { fontSize: '20px', fontWeight: 700, color: '#d93636', margin: 0, marginBottom: '10px', fontFamily: "'Hind Siliguri', sans-serif" },
+  popupMessage: { fontSize: '14px', color: '#3a4152', margin: 0, marginBottom: '24px', lineHeight: 1.7, fontFamily: "'Hind Siliguri', sans-serif" },
+  popupBtn: { width: '100%', padding: '14px', borderRadius: '12px', background: 'linear-gradient(135deg, #0a1f44, #16346b)', color: '#ffffff', fontSize: '15px', fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif", border: 'none', cursor: 'pointer' },
 }
 
 export default LoginPage
