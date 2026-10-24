@@ -1,10 +1,45 @@
 function UserDashboard({ user, onLogout }) {
-  const statusLabels = {
-    pending: { text: 'অপেক্ষমাণ', color: '#d4a537', bg: 'rgba(212, 165, 55, 0.10)' },
-    approved: { text: 'অনুমোদিত', color: '#1e9d5a', bg: 'rgba(30, 157, 90, 0.10)' },
-    rejected: { text: 'বাতিল', color: '#d93636', bg: 'rgba(217, 54, 54, 0.10)' },
+  // স্ট্যাটাস লেবেল, কালার ও বার্তা
+  const statusConfig = {
+    pending: { 
+      text: 'অপেক্ষমাণ', 
+      color: '#d4a537', 
+      bg: 'rgba(212, 165, 55, 0.10)', 
+      message: 'আপনার অ্যাকাউন্টটি সাপোর্ট টিম যাচাই করছেন। অনুগ্রহ করে অপেক্ষা করুন — ২৪ ঘণ্টার মধ্যে কনফার্মেশন SMS পাবেন।' 
+    },
+    approved: { 
+      text: 'অনুমোদিত', 
+      color: '#1e9d5a', 
+      bg: 'rgba(30, 157, 90, 0.10)', 
+      message: '🎉 অভিনন্দন! আপনার অ্যাকাউন্ট অনুমোদিত হয়েছে। এখন আপনি সব সুবিধা পাবেন।' 
+    },
+    rejected: { 
+      text: 'বাতিল', 
+      color: '#d93636', 
+      bg: 'rgba(217, 54, 54, 0.10)', 
+      message: 'দুঃখিত, আপনার অ্যাকাউন্টটি বাতিল করা হয়েছে। বিস্তারিত জানতে সাপোর্টে যোগাযোগ করুন।' 
+    },
+    suspended: { 
+      text: 'সাসপেন্ডেড', 
+      color: '#f39c12', 
+      bg: 'rgba(243, 156, 18, 0.10)', 
+      message: 'আপনার অ্যাকাউন্টটি সাময়িকভাবে স্থগিত (Suspend) করা হয়েছে। অনুগ্রহ করে সাপোর্ট টিমের সাথে যোগাযোগ করুন।' 
+    },
+    blocked: { 
+      text: 'ব্লকড', 
+      color: '#d93636', 
+      bg: 'rgba(217, 54, 54, 0.15)', 
+      message: 'দুঃখিত, আপনার অ্যাকাউন্টটি ব্লক করা হয়েছে। বিস্তারিত জানতে সাপোর্টে যোগাযোগ করুন।' 
+    },
+    disabled: { 
+      text: 'ডিসএবলড', 
+      color: '#5a6472', 
+      bg: 'rgba(90, 100, 114, 0.10)', 
+      message: 'আপনার অ্যাকাউন্টটি নিষ্ক্রিয় (Disable) করা হয়েছে। কোনো সহায়তা প্রয়োজন হলে সাপোর্টে যোগাযোগ করুন।' 
+    }
   }
-  const status = statusLabels[user.status] || statusLabels.pending
+
+  const currentStatus = statusConfig[user.status] || statusConfig.pending
 
   return (
     <div style={styles.page}>
@@ -31,29 +66,17 @@ function UserDashboard({ user, onLogout }) {
           <p style={styles.userMobile}>📱 {user.mobile}</p>
 
           {/* স্ট্যাটাস ব্যাজ */}
-          <div style={{ ...styles.statusBadge, background: status.bg, borderColor: status.color }}>
-            <span style={{ ...styles.statusDot, background: status.color }}></span>
-            <span style={{ ...styles.statusText, color: status.color }}>
-              আপনার অ্যাকাউন্ট: {status.text}
+          <div style={{ ...styles.statusBadge, background: currentStatus.bg, borderColor: currentStatus.color }}>
+            <span style={{ ...styles.statusDot, background: currentStatus.color }}></span>
+            <span style={{ ...styles.statusText, color: currentStatus.color }}>
+              আপনার অ্যাকাউন্ট: {currentStatus.text}
             </span>
           </div>
 
           {/* স্ট্যাটাস মেসেজ */}
-          {user.status === 'pending' && (
-            <p style={styles.statusMessage}>
-              আপনার অ্যাকাউন্টটি সাপোর্ট টিম যাচাই করছেন। অনুগ্রহ করে অপেক্ষা করুন — ২৪ ঘণ্টার মধ্যে কনফার্মেশন SMS পাবেন।
-            </p>
-          )}
-          {user.status === 'approved' && (
-            <p style={{ ...styles.statusMessage, color: '#1e9d5a' }}>
-              🎉 অভিনন্দন! আপনার অ্যাকাউন্ট অনুমোদিত হয়েছে। এখন আপনি সব সুবিধা পাবেন।
-            </p>
-          )}
-          {user.status === 'rejected' && (
-            <p style={{ ...styles.statusMessage, color: '#d93636' }}>
-              আপনার অ্যাকাউন্টটি বাতিল করা হয়েছে। বিস্তারিত জানতে সাপোর্টে যোগাযোগ করুন।
-            </p>
-          )}
+          <p style={{ ...styles.statusMessage, color: currentStatus.color }}>
+            {currentStatus.message}
+          </p>
         </section>
 
         {/* তথ্য কার্ড */}
@@ -63,6 +86,12 @@ function UserDashboard({ user, onLogout }) {
           <div style={styles.infoRow}><span style={styles.infoLabel}>মায়ের নাম</span><span style={styles.infoValue}>{user.mother_name}</span></div>
           <div style={styles.infoRow}><span style={styles.infoLabel}>ঠিকানা</span><span style={styles.infoValue}>{user.village}, {user.thana}, {user.district}</span></div>
           <div style={styles.infoRow}><span style={styles.infoLabel}>শিক্ষা</span><span style={styles.infoValue}>{user.education_level}</span></div>
+          {user.user_type === 'job_seeker' && user.industry_type && (
+            <div style={styles.infoRow}><span style={styles.infoLabel}>ইন্ডাস্ট্রি</span><span style={styles.infoValue}>{user.industry_type}</span></div>
+          )}
+          {user.user_type === 'job_seeker' && user.designation && (
+            <div style={styles.infoRow}><span style={styles.infoLabel}>পদবী</span><span style={styles.infoValue}>{user.designation}</span></div>
+          )}
         </section>
 
         {/* আসন্ন ফিচার */}
@@ -93,7 +122,7 @@ const styles = {
   statusBadge: { display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '20px', border: '1.5px solid', marginBottom: '12px' },
   statusDot: { width: '8px', height: '8px', borderRadius: '50%' },
   statusText: { fontSize: '12.5px', fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif" },
-  statusMessage: { fontSize: '13px', color: '#5a6472', margin: '8px 0 0', lineHeight: 1.65, fontFamily: "'Hind Siliguri', sans-serif" },
+  statusMessage: { fontSize: '13px', margin: '8px 0 0', lineHeight: 1.65, fontFamily: "'Hind Siliguri', sans-serif", fontWeight: 500 },
   infoCard: { background: '#ffffff', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 14px rgba(10, 31, 68, 0.06)' },
   infoTitle: { fontSize: '14px', fontWeight: 700, color: '#0a1f44', margin: '0 0 14px', paddingBottom: '10px', borderBottom: '1.5px solid #e2e6ee', fontFamily: "'Hind Siliguri', sans-serif" },
   infoRow: { display: 'flex', justifyContent: 'space-between', padding: '7px 0', fontSize: '13px', fontFamily: "'Hind Siliguri', sans-serif", gap: '10px' },
