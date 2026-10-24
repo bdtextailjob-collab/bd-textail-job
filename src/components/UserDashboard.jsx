@@ -1,4 +1,43 @@
-function UserDashboard({ user, onLogout }) {
+import { useState, useEffect } from 'react'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+function UserDashboard({ user: initialUser, onLogout }) {
+  // লোকাল স্টেটে ইউজার ডেটা রাখছি, যাতে রিয়েল-টাইমে আপডেট করা যায়
+  const [user, setUser] = useState(initialUser)
+
+  // =====================================================
+  // রিয়েল-টাইম সাবস্ক্রিপশন (রিফ্রেস ছাড়াই স্ট্যাটাস আপডেট)
+  // =====================================================
+  useEffect(() => {
+    // Supabase Realtime চ্যানেল তৈরি
+    const channel = supabase
+      .channel(`user-status-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users',
+          filter: `id=eq.${user.id}`
+        },
+        (payload) => {
+          // ডেটাবেসে কোনো পরিবর্তন হলে সাথে সাথে লোকাল স্টেট আপডেট হবে
+          setUser(payload.new)
+        }
+      )
+      .subscribe()
+
+    // পেজ আনমাউন্ট হলে চ্যানেল ক্লিনআপ
+    return () => {
+      supabase.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id])
+
   // স্ট্যাটাস লেবেল, কালার ও বার্তা
   const statusConfig = {
     pending: { 
