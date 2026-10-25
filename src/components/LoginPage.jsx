@@ -39,7 +39,7 @@ function LoginPage({ onLoginSuccess, onClose }) {
       }
 
       // স্ট্যাটাস চেক
-      if (data.status === 'suspended' || data.status === 'blocked' || data.status === 'disabled') {
+      if (data.status !== 'approved') {
         setBlockedPopup(data.status)
         setLoading(false)
         return
@@ -58,10 +58,18 @@ function LoginPage({ onLoginSuccess, onClose }) {
 
   // পপআপ মেসেজ
   const getPopupMessage = (status) => {
-    if (status === 'suspended') return 'আপনার অ্যাকাউন্টটি সাময়িকভাবে সাসপেন্ড করা হয়েছে। অনুগ্রহ করে সাপোর্ট টিমের সাথে যোগাযোগ করুন।'
+    if (status === 'pending') return 'আপনার অ্যাকাউন্টটি পেন্ডিং অবস্থায় আছে। BD Textail Job-এর সাপোর্ট টিম আপনার অ্যাকাউন্টটি পর্যবেক্ষণ করছেন। অনুগ্রহ করে কনফার্মেশন SMS-এর জন্য অপেক্ষা করুন।'
+    if (status === 'rejected') return 'দুঃখিত, আপনার অ্যাকাউন্টটি বাতিল করা হয়েছে। বিস্তারিত জানতে সাপোর্টে যোগাযোগ করুন।'
+    if (status === 'suspended') return 'আপনার অ্যাকাউন্টটি সাময়িকভাবে সাসপেন্ড করা হয়েছে। সাপোর্ট টিমের সাথে যোগাযোগ করুন।'
     if (status === 'blocked') return 'দুঃখিত, আপনার অ্যাকাউন্টটি ব্লক করা হয়েছে। বিস্তারিত জানতে সাপোর্টে যোগাযোগ করুন।'
     if (status === 'disabled') return 'আপনার অ্যাকাউন্টটি নিষ্ক্রিয় (Disable) করা হয়েছে। সাপোর্টে যোগাযোগ করুন।'
-    return ''
+    return 'আপনার অ্যাকাউন্টটি বর্তমানে লগইন করার অনুমতি নেই।'
+  }
+
+  // পপআপ টাইটেল
+  const getPopupTitle = (status) => {
+    if (status === 'pending') return '⏳ অ্যাকাউন্ট পেন্ডিং'
+    return '🚫 অ্যাক্সেস ব্লকড'
   }
 
   return (
@@ -122,8 +130,8 @@ function LoginPage({ onLoginSuccess, onClose }) {
       {blockedPopup && (
         <div style={styles.popupOverlay}>
           <div style={styles.popupBox}>
-            <div style={styles.popupIcon}>🚫</div>
-            <h3 style={styles.popupTitle}>অ্যাক্সেস ব্লকড</h3>
+            <div style={styles.popupIcon}>{blockedPopup === 'pending' ? '⏳' : '🚫'}</div>
+            <h3 style={styles.popupTitle}>{getPopupTitle(blockedPopup)}</h3>
             <p style={styles.popupMessage}>{getPopupMessage(blockedPopup)}</p>
             <button style={styles.popupBtn} onClick={() => setBlockedPopup(null)}>ঠিক আছে</button>
           </div>
@@ -152,12 +160,11 @@ const styles = {
   loginBtn: { width: '100%', padding: '15px 20px', marginTop: '6px', borderRadius: '12px', background: 'linear-gradient(135deg, #0a1f44, #16346b)', color: '#ffffff', fontSize: '16px', fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif", border: 'none', cursor: 'pointer', boxShadow: '0 6px 16px rgba(10,31,68,0.25)' },
   footerNote: { fontSize: '12px', color: '#8a92a2', textAlign: 'center', margin: '18px 0 0', fontFamily: "'Hind Siliguri', sans-serif" },
 
-  // পপআপ স্টাইল
   popupOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(10, 31, 68, 0.85)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 9999 },
   popupBox: { width: '100%', maxWidth: '360px', background: '#ffffff', borderRadius: '20px', padding: '30px 24px 24px', textAlign: 'center', boxShadow: '0 24px 60px rgba(0, 0, 0, 0.35)' },
   popupIcon: { fontSize: '50px', marginBottom: '12px' },
-  popupTitle: { fontSize: '20px', fontWeight: 700, color: '#d93636', margin: 0, marginBottom: '10px', fontFamily: "'Hind Siliguri', sans-serif" },
-  popupMessage: { fontSize: '14px', color: '#3a4152', margin: 0, marginBottom: '24px', lineHeight: 1.7, fontFamily: "'Hind Siliguri', sans-serif" },
+  popupTitle: { fontSize: '18px', fontWeight: 700, color: '#0a1f44', margin: 0, marginBottom: '10px', fontFamily: "'Hind Siliguri', sans-serif" },
+  popupMessage: { fontSize: '13.5px', color: '#3a4152', margin: 0, marginBottom: '24px', lineHeight: 1.7, fontFamily: "'Hind Siliguri', sans-serif" },
   popupBtn: { width: '100%', padding: '14px', borderRadius: '12px', background: 'linear-gradient(135deg, #0a1f44, #16346b)', color: '#ffffff', fontSize: '15px', fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif", border: 'none', cursor: 'pointer' },
 }
 
