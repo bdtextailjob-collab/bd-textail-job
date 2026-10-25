@@ -1,13 +1,51 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createClient } from '@supabase/supabase-js'
 import UserRegisterForm from './UserRegisterForm.jsx'
 import JobSeekerRegisterForm from './JobSeekerRegisterForm.jsx'
 import LoginPage from './LoginPage.jsx'
 import UserDashboard from './UserDashboard.jsx'
 
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
 function HomePage() {
   const [showAccountPopup, setShowAccountPopup] = useState(false)
-  const [activeView, setActiveView] = useState('home') // 'home', 'register-general', 'register-jobseeker', 'login', 'dashboard'
+  const [activeView, setActiveView] = useState('home')
   const [loggedInUser, setLoggedInUser] = useState(null)
+  
+  // রিয়েল-টাইম ইউজার কাউন্ট
+  const [userCount, setUserCount] = useState(0)
+
+  // ---------- ইউজার সংখ্যা লোড ও রিয়েল-টাইম আপডেট ----------
+  const fetchUserCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'approved')
+      
+      if (error) throw error
+      setUserCount(count || 0)
+    } catch (err) {
+      console.error('Error fetching count:', err)
+    }
+  }
+
+  useEffect(() => {
+    fetchUserCount()
+
+    // রিয়েল-টাইম সাবস্ক্রিপশন
+    const channel = supabase
+      .channel('users-count')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
+        // যেকোনো পরিবর্তন হলে (Insert, Update, Delete) আবার কাউন্ট করব
+        fetchUserCount()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   const handleOpenAccount = () => setShowAccountPopup(true)
   const handleCloseAccount = () => setShowAccountPopup(false)
@@ -16,24 +54,17 @@ function HomePage() {
   const handleSelectJobSeeker = () => { setShowAccountPopup(false); setActiveView('register-jobseeker') }
 
   const handleCloseForm = () => setActiveView('home')
-
-  // লগইন বাটন
-  const handleLoginClick = () => { setActiveView('login') }
+  const handleLoginClick = () => setActiveView('login')
   const handleCloseLogin = () => setActiveView('home')
-
-  // লগইন সফল হলে
   const handleLoginSuccess = (userData) => {
     setLoggedInUser(userData)
     setActiveView('dashboard')
   }
-
-  // লগআউট
   const handleLogout = () => {
     setLoggedInUser(null)
     setActiveView('home')
   }
 
-  // রেন্ডার
   if (activeView === 'register-general') return <UserRegisterForm onClose={handleCloseForm} />
   if (activeView === 'register-jobseeker') return <JobSeekerRegisterForm onClose={handleCloseForm} />
   if (activeView === 'login') return <LoginPage onLoginSuccess={handleLoginSuccess} onClose={handleCloseLogin} />
@@ -41,7 +72,6 @@ function HomePage() {
 
   return (
     <div style={styles.page}>
-      {/* হেডার */}
       <header style={styles.header}>
         <div style={styles.headerInner}>
           <div style={styles.logoArea}>
@@ -59,7 +89,6 @@ function HomePage() {
         </div>
       </header>
 
-      {/* মূল কনটেন্ট */}
       <main style={styles.main}>
         <section style={styles.welcomeCard}>
           <div style={styles.welcomeBadge}>স্বাগতম</div>
@@ -75,10 +104,11 @@ function HomePage() {
           <button style={styles.btnOutline} onClick={handleLoginClick}>লগইন করুন</button>
         </section>
 
+        {/* স্ট্যাটস কার্ড (রিয়েল-টাইম) */}
         <section style={styles.statsCard}>
           <p style={styles.statsLabel}>মোট নিবন্ধিত ব্যবহারকারী</p>
-          <p style={styles.statsNumber}>০</p>
-          <p style={styles.statsNote}>ডেটাবেস সংযোগের পর প্রকৃত সংখ্যা দেখাবে</p>
+          <p style={styles.statsNumber}>{userCount.toLocaleString('bn-BD')}</p>
+          <p style={styles.statsNote}>অনুমোদিত ইউজার সংখ্যা</p>
         </section>
       </main>
 
