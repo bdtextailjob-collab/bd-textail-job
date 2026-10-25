@@ -44,10 +44,10 @@ function UserDashboard({ user: initialUser, onLogout }) {
   const [chatBlockPopup, setChatBlockPopup] = useState(false)
   const chatEndRef = useRef(null)
   const typingTimeoutRef = useRef(null)
-  const inputRef = useRef(null)
 
   // Messages List (Inbox) State
   const [chatPartners, setChatPartners] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0) // নেভিগেশন বারে মোট আনরিড
 
   // ---------- Functions ----------
   const fetchPosts = async () => {
@@ -83,27 +83,62 @@ function UserDashboard({ user: initialUser, onLogout }) {
       if (unreadIds && unreadIds.length > 0) {
         await supabase.from('messages').update({ is_seen: true }).in('id', unreadIds)
       }
-
     } catch (err) { console.error(err) } finally { setLoadingMessages(false) }
   }
 
-  const fetchChatPartners = async () => {
+  const fetchChatPartnersAndUnread = async () => {
     try {
-      const { data, error } = await supabase.from('messages').select('*').or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`).order('created_at', { ascending: false })
+      // সব মেসেজ আনা (আনরিড কাউন্ট ও লাস্ট মেসেজের জন্য)
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order('created_at', { ascending: false }) // লেটেস্ট আগে
+
       if (error) throw error
-      const partnerIds = new Set()
+
+      const partnerMap = {}
+      let totalUnread = 0
+
       data.forEach(msg => {
-        if (msg.sender_id === user.id) partnerIds.add(msg.receiver_id)
-        else partnerIds.add(msg.sender_id)
+        const isMe = msg.sender_id === user.id
+        const partnerId = isMe ? msg.receiver_id : msg.sender_id
+        
+        // আনরিড কাউন্ট (শুধু অপরজনের পাঠানো, যা এখনো দেখা হয়নি)
+        if (!isMe && !msg.is_seen) totalUnread++
+
+        // প্রথমবার এই পার্টনারের মেসেজ পেলে (যেহেতু descending order, এটি লাস্ট মেসেজ)
+        if (!partnerMap[partnerId]) {
+          partnerMap[partnerId] = {
+            lastMessage: msg.content,
+            hasUnread: !isMe && !msg.is_seen,
+            created_at: msg.created_at
+          }
+        }
       })
-      if (partnerIds.size === 0) { setChatPartners([]); return }
-      const { data: usersData } = await supabase.from('users').select('*').in('id', Array.from(partnerIds))
-      setChatPartners(usersData || [])
+
+      setUnreadCount(totalUnread)
+
+      const partnerIds = Object.keys(partnerMap)
+      if (partnerIds.length === 0) { setChatPartners([]); return }
+
+      const { data: usersData } = await supabase.from('users').select('*').in('id', partnerIds)
+      
+      const formattedPartners = usersData?.map(u => ({
+        ...u,
+        lastMessage: partnerMap[u.id].lastMessage,
+        hasUnread: partnerMap[u.id].hasUnread
+      })) || []
+
+      // লাস্ট মেসেজের সময় অনুযায়ী সাজানো
+      formattedPartners.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+
+      setChatPartners(formattedPartners)
     } catch (err) { console.error(err) }
   }
 
   useEffect(() => {
-    fetchPosts(); fetchCommunityUsers(); fetchChatPartners()
+    fetchPosts(); fetchCommunityUsers(); fetchChatPartnersAndUnread()
 
     const userChannel = supabase.channel(`user-status-${user.id}`).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${user.id}` }, (payload) => {
       const newStatus = payload.new.status
@@ -111,36 +146,43 @@ function UserDashboard({ user: initialUser, onLogout }) {
       else setUser(payload.new)
     }).subscribe()
 
-    return () => { supabase.removeChannel(userChannel) }
+    // গ্লোবাল মেসেজ লিসেনার (যেকোনো নতুন মেসেজ এলে চ্যাট লিস্ট ও আনরিড আপডেট হবে)
+    const globalMsgChannel = supabase.channel(`global-messages-${user.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+        fetchChatPartnersAndUnread()
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, () => {
+        fetchChatPartnersAndUnread()
+      })
+      .subscribe()
+
+    return () => { 
+      supabase.removeChannel(userChannel)
+      supabase.removeChannel(globalMsgChannel)
+    }
   }, [user.id])
 
-  // চ্যাট ওপেন থাকলে রিয়েল-টাইম লিসেনার
+  // চ্যাট ওপেন থাকলে রিয়েল-টাইম আপডেট
   useEffect(() => {
     if (!activeChatUser) return
 
-    // মেসেজ চ্যানেল
     const msgChannel = supabase.channel(`chat-${user.id}-${activeChatUser.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const msg = payload.new
-        // যদি এই চ্যাটের মেসেজ হয়
         if ((msg.sender_id === user.id && msg.receiver_id === activeChatUser.id) || (msg.sender_id === activeChatUser.id && msg.receiver_id === user.id)) {
           setMessages(prev => [...prev, msg])
           if (msg.is_chat_blocked) setIsChatBlocked(true)
           
-          // যদি অপরজন পাঠায়, তবে সাথে সাথে seen করে দাও
           if (msg.sender_id === activeChatUser.id) {
              supabase.from('messages').update({ is_seen: true }).eq('id', msg.id).then()
           }
         }
-        fetchChatPartners()
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (payload) => {
-        // Seen স্ট্যাটাস আপডেট হলে
         setMessages(prev => prev.map(m => m.id === payload.new.id ? payload.new : m))
       })
       .subscribe()
 
-    // টাইপিং চ্যানেল
     const typingChannel = supabase.channel(`typing-${user.id}-${activeChatUser.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'typing_status' }, (payload) => {
         if (payload.new.sender_id === activeChatUser.id && payload.new.receiver_id === user.id) {
@@ -182,20 +224,15 @@ function UserDashboard({ user: initialUser, onLogout }) {
     if (!newMessage.trim() || !activeChatUser || isChatBlocked) return
     
     const msgContent = newMessage.trim()
-    setNewMessage('') // ফাঁকা করা
+    setNewMessage('') 
     
-    // ২ সেকেন্ড পর নিজের typing স্টেটাস বন্ধ করা
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     await supabase.from('typing_status').upsert({ sender_id: user.id, receiver_id: activeChatUser.id, is_typing: false }, { onConflict: 'sender_id,receiver_id' })
 
     try {
-      // ডেটাবেসে সেভ
       const { data, error } = await supabase.from('messages').insert([{ sender_id: user.id, receiver_id: activeChatUser.id, content: msgContent, is_chat_blocked: false, is_seen: false }]).select()
       if (error) throw error
-      
-      // লোকাল স্টেটে যোগ করা (লাইভ আপডেট)
       if (data) setMessages(prev => [...prev, data[0]])
-      fetchChatPartners()
     } catch (err) { alert('মেসেজ পাঠাতে সমস্যা: ' + err.message) }
   }
 
@@ -244,7 +281,7 @@ function UserDashboard({ user: initialUser, onLogout }) {
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
                     <div style={{ 
                       ...styles.msgBubble, 
-                      background: isMe ? '#0084ff' : '#e4e6eb', // ফেসবুক মেসেঞ্জার কালার
+                      background: isMe ? '#0084ff' : '#e4e6eb',
                       color: isMe ? '#ffffff' : '#111827',
                       borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px'
                     }}>
@@ -274,7 +311,6 @@ function UserDashboard({ user: initialUser, onLogout }) {
           ) : (
             <>
               <input 
-                ref={inputRef}
                 type="text" 
                 style={styles.chatInput} 
                 placeholder="মেসেজ লিখুন..." 
@@ -316,7 +352,14 @@ function UserDashboard({ user: initialUser, onLogout }) {
       <nav style={styles.topNav}>
         <button style={styles.navBtn} onClick={() => setActiveTab('home')}><svg width="26" height="26" viewBox="0 0 24 24" fill={activeTab === 'home' ? "#d4a537" : "none"} stroke={activeTab === 'home' ? "#d4a537" : "#ffffff"} strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>{activeTab === 'home' && <div style={styles.activeLine}></div>}</button>
         <button style={styles.navBtn} onClick={() => setActiveTab('community')}><svg width="26" height="26" viewBox="0 0 24 24" fill={activeTab === 'community' ? "#d4a537" : "none"} stroke={activeTab === 'community' ? "#d4a537" : "#ffffff"} strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>{activeTab === 'community' && <div style={styles.activeLine}></div>}</button>
-        <button style={styles.navBtn} onClick={() => setActiveTab('message')}><svg width="26" height="26" viewBox="0 0 24 24" fill={activeTab === 'message' ? "#d4a537" : "none"} stroke={activeTab === 'message' ? "#d4a537" : "#ffffff"} strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg><span style={styles.badge}>1</span>{activeTab === 'message' && <div style={styles.activeLine}></div>}</button>
+        
+        {/* মেসেজ আইকন (লাইভ আনরিড ব্যাজ সহ) */}
+        <button style={styles.navBtn} onClick={() => setActiveTab('message')}>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill={activeTab === 'message' ? "#d4a537" : "none"} stroke={activeTab === 'message' ? "#d4a537" : "#ffffff"} strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+          {unreadCount > 0 && <span style={styles.badge}>{unreadCount}</span>}
+          {activeTab === 'message' && <div style={styles.activeLine}></div>}
+        </button>
+
         <button style={styles.navBtn} onClick={() => setActiveTab('notification')}><svg width="26" height="26" viewBox="0 0 24 24" fill={activeTab === 'notification' ? "#d4a537" : "none"} stroke={activeTab === 'notification' ? "#d4a537" : "#ffffff"} strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg><span style={styles.badge}>8</span>{activeTab === 'notification' && <div style={styles.activeLine}></div>}</button>
         <button style={styles.navBtn} onClick={() => setActiveTab('profile')}><svg width="26" height="26" viewBox="0 0 24 24" fill={activeTab === 'profile' ? "#d4a537" : "none"} stroke={activeTab === 'profile' ? "#d4a537" : "#ffffff"} strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>{activeTab === 'profile' && <div style={styles.activeLine}></div>}</button>
       </nav>
@@ -358,7 +401,18 @@ function UserDashboard({ user: initialUser, onLogout }) {
             {chatPartners.length === 0 ? <p style={styles.loadingText}>এখনো কোনো মেসেজ নেই।</p> : (
               <div style={styles.chatList}>
                 {chatPartners.map((u) => (
-                  <div key={u.id} style={styles.chatListCard} onClick={() => openChat(u)}><img src={u.profile_image_url} style={styles.chatListAvatar} /><div><p style={styles.chatListName}>{u.name}</p><p style={styles.chatListText}>চ্যাট করতে ক্লিক করুন</p></div></div>
+                  <div key={u.id} style={{ ...styles.chatListCard, background: u.hasUnread ? '#f0f8ff' : '#ffffff' }} onClick={() => openChat(u)}>
+                    <img src={u.profile_image_url} style={styles.chatListAvatar} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <p style={styles.chatListName}>{u.name}</p>
+                        {u.hasUnread && <span style={styles.unreadDot}></span>}
+                      </div>
+                      <p style={{ ...styles.chatListText, fontWeight: u.hasUnread ? 700 : 400, color: u.hasUnread ? '#0a1f44' : '#5a6472' }}>
+                        {u.lastMessage}
+                      </p>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
@@ -379,6 +433,7 @@ function UserDashboard({ user: initialUser, onLogout }) {
 
 // স্টাইল
 const styles = {
+  // ... আগের স্টাইল (এখানে সম্পূর্ণ কোড দিলাম, আগের স্টাইলগুলো ঠিক আছে)
   appWrapper: { minHeight: '100vh', width: '100%', background: '#f5f7fa', display: 'flex', flexDirection: 'column', overflowX: 'hidden' },
   topBar: { position: 'sticky', top: 0, zIndex: 50, background: 'linear-gradient(135deg, #0a1f44 0%, #16346b 100%)', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   appLogo: { fontSize: '24px', fontWeight: 800, color: '#ffffff', margin: 0, fontFamily: "'Poppins', sans-serif" },
@@ -387,7 +442,7 @@ const styles = {
   topNav: { background: '#0a1f44', display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '6px 0', zIndex: 40, position: 'sticky', top: '68px' },
   navBtn: { position: 'relative', background: 'transparent', border: 'none', padding: '12px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   activeLine: { position: 'absolute', bottom: '0px', left: '10%', width: '80%', height: '3px', background: '#d4a537', borderRadius: '3px 3px 0 0' },
-  badge: { position: 'absolute', top: '4px', right: '10px', background: '#d4a537', color: '#0a1f44', fontSize: '10px', fontWeight: 800, minWidth: '20px', height: '20px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #0a1f44' },
+  badge: { position: 'absolute', top: '4px', right: '10px', background: '#d93636', color: '#ffffff', fontSize: '10px', fontWeight: 800, minWidth: '20px', height: '20px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #0a1f44' },
   mainContent: { flex: 1, padding: '16px' },
   feedContainer: { maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '16px' },
   createPostBox: { background: '#ffffff', borderRadius: '20px', padding: '18px', boxShadow: '0 8px 25px rgba(10, 31, 68, 0.08)', cursor: 'pointer' },
@@ -416,10 +471,11 @@ const styles = {
   cardInfoValue: { color: '#0a1f44', fontWeight: 700 },
   messageBtn: { width: '100%', padding: '12px', borderRadius: '12px', background: 'linear-gradient(135deg, #0a1f44, #16346b)', color: '#ffffff', fontSize: '14px', fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(10, 31, 68, 0.2)' },
   chatList: { display: 'flex', flexDirection: 'column', gap: '12px' },
-  chatListCard: { display: 'flex', alignItems: 'center', gap: '14px', background: '#ffffff', padding: '16px', borderRadius: '16px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(10,31,68,0.06)' },
+  chatListCard: { display: 'flex', alignItems: 'center', gap: '14px', padding: '16px', borderRadius: '16px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(10,31,68,0.06)', transition: 'background 0.2s ease' },
   chatListAvatar: { width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' },
   chatListName: { fontSize: '16px', fontWeight: 700, color: '#0a1f44', margin: '0 0 2px' },
-  chatListText: { fontSize: '12px', color: '#5a6472', margin: 0 },
+  chatListText: { fontSize: '13px', color: '#5a6472', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  unreadDot: { width: '10px', height: '10px', borderRadius: '50%', background: '#0084ff' },
   
   // Chat Page (Messenger Style)
   chatPage: { display: 'flex', flexDirection: 'column', height: '100vh', background: '#ffffff' },
@@ -439,11 +495,7 @@ const styles = {
   sendBtn: { width: '46px', height: '46px', borderRadius: '50%', background: '#1877F2', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   chatBlockedBox: { flex: 1, padding: '12px', background: '#ffebee', borderRadius: '12px', border: '1px solid #d93636' },
   chatBlockedText: { color: '#d93636', margin: 0, fontWeight: 600, textAlign: 'center', fontSize: '14px' },
-
-  // Typing Dots
   dot: { width: '8px', height: '8px', borderRadius: '50%', background: '#8a92a2', display: 'inline-block', animation: 'typing 1.4s infinite ease-in-out both' },
-
-  // Modal
   modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(10, 31, 68, 0.85)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1000 },
   modalContent: { background: '#ffffff', width: '100%', maxWidth: '600px', height: '90vh', display: 'flex', flexDirection: 'column', padding: '20px', borderTopLeftRadius: '24px', borderTopRightRadius: '24px' },
   modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '15px', borderBottom: '1.5px solid #e2e6ee' },
@@ -456,7 +508,6 @@ const styles = {
   colorPalette: { display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '16px', marginBottom: '16px', borderBottom: '1.5px solid #e2e6ee' },
   colorCircle: { width: '40px', height: '40px', borderRadius: '50%', cursor: 'pointer', flexShrink: 0 },
   modalTextArea: { flex: 1, border: 'none', outline: 'none', fontSize: '20px', resize: 'none', padding: '20px', borderRadius: '16px' },
-
   popupOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(10, 31, 68, 0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '20px' },
   popupBox: { background: '#ffffff', width: '100%', maxWidth: '360px', borderRadius: '24px', padding: '30px 24px', textAlign: 'center' },
   popupIcon: { fontSize: '50px', marginBottom: '16px' },
