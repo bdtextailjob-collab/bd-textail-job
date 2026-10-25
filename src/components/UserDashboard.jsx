@@ -26,11 +26,9 @@ function UserDashboard({ user: initialUser, onLogout }) {
   const [postText, setPostText] = useState('')
   const [selectedTheme, setSelectedTheme] = useState(colorThemes[0])
   
-  // সাকসেস পপআপ স্টেট
   const [showSuccessPopup, setShowSuccessPopup] = useState(false)
   const [isPosting, setIsPosting] = useState(false)
 
-  // রিয়েল পোস্ট স্টেট
   const [posts, setPosts] = useState([])
   const [loadingPosts, setLoadingPosts] = useState(true)
 
@@ -38,10 +36,11 @@ function UserDashboard({ user: initialUser, onLogout }) {
   const fetchPosts = async () => {
     setLoadingPosts(true)
     try {
+      // ডেটাবেস থেকে 'approved' এবং নিজের 'disabled' পোস্ট আনা
       const { data, error } = await supabase
         .from('posts')
         .select('*')
-        .eq('status', 'approved')
+        .or(`status.eq.approved,and(user_id.eq.${user.id},status.eq.disabled)`)
         .order('created_at', { ascending: false })
       
       if (error) throw error
@@ -56,20 +55,24 @@ function UserDashboard({ user: initialUser, onLogout }) {
   useEffect(() => {
     fetchPosts()
 
-    // রিয়েল-টাইমে নতুন পোস্ট আসলে আপডেট হবে
+    // রিয়েল-টাইম আপডেট
     const channel = supabase
       .channel('public:posts')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts', filter: 'status=eq.approved' }, (payload) => {
-        setPosts(prev => [payload.new, ...prev])
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, (payload) => {
+        if (payload.new.status === 'approved' || payload.new.user_id === user.id) {
+          setPosts(prev => [payload.new, ...prev])
+        }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts' }, (payload) => {
-        // স্ট্যাটাস চেঞ্জ হলে লিস্ট রিফ্রেশ করা
         fetchPosts()
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'posts' }, (payload) => {
+        setPosts(prev => prev.filter(p => p.id !== payload.old.id))
       })
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [])
+  }, [user.id])
 
   // ইউজার স্ট্যাটাস চেক
   useEffect(() => {
@@ -93,7 +96,7 @@ function UserDashboard({ user: initialUser, onLogout }) {
     return () => { supabase.removeChannel(channel) }
   }, [user.id])
 
-  // ---------- পোস্ট সাবমিট ----------
+  // ---------- নতুন পোস্ট ----------
   const handleCreatePost = async () => {
     if (!postText.trim() || isPosting) return;
     setIsPosting(true)
@@ -111,7 +114,6 @@ function UserDashboard({ user: initialUser, onLogout }) {
 
       if (error) throw error
 
-      // সফল হলে পপআপ দেখাও এবং ফরম রিসেট করো
       setPostText('')
       setSelectedTheme(colorThemes[0])
       setIsCreatePostOpen(false)
@@ -193,7 +195,6 @@ function UserDashboard({ user: initialUser, onLogout }) {
         {activeTab === 'home' && (
           <div style={styles.feedContainer}>
             
-            {/* পোস্ট বক্স */}
             <div style={styles.createPostBox} onClick={() => setIsCreatePostOpen(true)}>
               <div style={styles.postHeader}>
                 <img src={user.profile_image_url || `https://ui-avatars.com/api/?name=${user.name}&background=0a1f44&color=fff`} alt="Profile" style={styles.avatar} />
@@ -203,42 +204,53 @@ function UserDashboard({ user: initialUser, onLogout }) {
               </div>
             </div>
 
-            {/* রিয়েল পোস্ট লিস্ট */}
             {loadingPosts ? (
               <p style={{ textAlign: 'center', color: '#5a6472', fontFamily: "'Hind Siliguri', sans-serif" }}>পোস্ট লোড হচ্ছে...</p>
             ) : posts.length === 0 ? (
               <p style={{ textAlign: 'center', color: '#5a6472', fontFamily: "'Hind Siliguri', sans-serif" }}>এখনো কোনো পোস্ট নেই। আপনিই প্রথম পোস্ট করুন!</p>
             ) : (
-              posts.map((post) => (
-                <div key={post.id} style={{ ...styles.feedCard, backgroundColor: post.theme_bg }}>
-                  <div style={styles.feedHeader}>
-                    <img src={post.author_image} alt="User" style={styles.feedAvatar} />
-                    <div>
-                      <p style={{ ...styles.feedAuthor, color: post.theme_text }}>{post.author_name}</p>
-                      <p style={{ ...styles.feedTime, color: post.theme_bg === '#ffffff' ? '#6b7280' : 'rgba(255,255,255,0.8)' }}>
-                        {new Date(post.created_at).toLocaleString('bn-BD', { hour: 'numeric', minute: 'numeric', day: 'numeric', month: 'short' })}
-                      </p>
+              posts.map((post) => {
+                const isOwner = post.user_id === user.id;
+                const isDisabled = post.status === 'disabled';
+
+                return (
+                  <div 
+                    key={post.id} 
+                    style={{ 
+                      ...styles.feedCard, 
+                      backgroundColor: post.theme_bg,
+                      opacity: (isOwner && isDisabled) ? 0.5 : 1 
+                    }}
+                  >
+                    <div style={styles.feedHeader}>
+                      <img src={post.author_image} alt="User" style={styles.feedAvatar} />
+                      <div>
+                        <p style={{ ...styles.feedAuthor, color: post.theme_text }}>{post.author_name}</p>
+                        <p style={{ ...styles.feedTime, color: post.theme_bg === '#ffffff' ? '#6b7280' : 'rgba(255,255,255,0.8)' }}>
+                          {new Date(post.created_at).toLocaleString('bn-BD', { hour: 'numeric', minute: 'numeric', day: 'numeric', month: 'short' })}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <p style={{ ...styles.feedContent, color: post.theme_text }}>{post.content}</p>
+                    
+                    <div style={{ ...styles.postActionBar, borderTopColor: post.theme_bg === '#ffffff' ? '#e5e7eb' : 'rgba(255,255,255,0.2)' }}>
+                      <button style={{ ...styles.actionBtn, color: post.theme_text }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+                        Like
+                      </button>
+                      <button style={{ ...styles.actionBtn, color: post.theme_text }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                        Comment
+                      </button>
+                      <button style={{ ...styles.actionBtn, color: post.theme_text }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+                        Share
+                      </button>
                     </div>
                   </div>
-                  
-                  <p style={{ ...styles.feedContent, color: post.theme_text }}>{post.content}</p>
-                  
-                  <div style={{ ...styles.postActionBar, borderTopColor: post.theme_bg === '#ffffff' ? '#e5e7eb' : 'rgba(255,255,255,0.2)' }}>
-                    <button style={{ ...styles.actionBtn, color: post.theme_text }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
-                      Like
-                    </button>
-                    <button style={{ ...styles.actionBtn, color: post.theme_text }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-                      Comment
-                    </button>
-                    <button style={{ ...styles.actionBtn, color: post.theme_text }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
-                      Share
-                    </button>
-                  </div>
-                </div>
-              ))
+                )
+              })
             )}
 
           </div>
@@ -257,7 +269,7 @@ function UserDashboard({ user: initialUser, onLogout }) {
 
       </main>
 
-      {/* ৪. Create Post Modal (মোবাইল ফ্রেন্ডলি) */}
+      {/* ৪. Create Post Modal */}
       {isCreatePostOpen && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
@@ -351,7 +363,7 @@ const styles = {
   avatar: { width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #d4a537' },
   fakeInput: { flex: 1, padding: '14px', borderRadius: '25px', border: '1.5px solid #e2e6ee', background: '#f5f7fa', fontSize: '15px', fontFamily: "'Hind Siliguri', sans-serif", color: '#5a6472' },
 
-  feedCard: { borderRadius: '24px', padding: '22px', boxShadow: '0 8px 24px rgba(10, 31, 68, 0.1)', minHeight: '180px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', transition: 'background-color 0.3s ease', border: '1px solid rgba(0,0,0,0.05)' },
+  feedCard: { borderRadius: '24px', padding: '22px', boxShadow: '0 8px 24px rgba(10, 31, 68, 0.1)', minHeight: '180px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', transition: 'background-color 0.3s ease, opacity 0.3s ease', border: '1px solid rgba(0,0,0,0.05)' },
   feedHeader: { display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '16px' },
   feedAvatar: { width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.3)' },
   feedAuthor: { fontSize: '16px', fontWeight: 800, margin: '0 0 4px', fontFamily: "'Hind Siliguri', sans-serif" },
@@ -364,7 +376,6 @@ const styles = {
   emptyContent: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', borderRadius: '20px', border: '2px dashed #d4a537', minHeight: '300px' },
   placeholderText: { fontSize: '20px', color: '#d4a537', fontWeight: 800, fontFamily: "'Hind Siliguri', sans-serif" },
 
-  // মডাল (মোবাইল ফ্রেন্ডলি)
   modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(10, 31, 68, 0.85)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1000 },
   modalContent: { background: '#ffffff', width: '100%', maxWidth: '600px', height: '90vh', display: 'flex', flexDirection: 'column', padding: '20px', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', boxShadow: '0 -10px 30px rgba(0,0,0,0.2)' },
   modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '15px', borderBottom: '1.5px solid #e2e6ee' },
@@ -382,7 +393,6 @@ const styles = {
   
   modalTextArea: { flex: 1, border: 'none', outline: 'none', fontSize: '20px', fontFamily: "'Hind Siliguri', sans-serif", resize: 'none', padding: '20px', borderRadius: '16px', transition: 'all 0.3s ease', boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.05)' },
 
-  // পপআপ স্টাইল
   popupOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(10, 31, 68, 0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '20px' },
   popupBox: { background: '#ffffff', width: '100%', maxWidth: '360px', borderRadius: '24px', padding: '30px 24px', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' },
   popupIcon: { fontSize: '50px', marginBottom: '16px' },
