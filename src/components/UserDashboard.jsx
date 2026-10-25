@@ -40,15 +40,16 @@ function UserDashboard({ user: initialUser, onLogout }) {
   const [newMessage, setNewMessage] = useState('')
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [isOtherTyping, setIsOtherTyping] = useState(false)
-  const [isChatBlocked, setIsChatBlocked] = useState(false) // দুজনের চ্যাট ব্লকড কিনা
-  const [chatBlockPopup, setChatBlockPopup] = useState(false) // চ্যাট ব্লকড পপআপ
+  const [isChatBlocked, setIsChatBlocked] = useState(false)
+  const [chatBlockPopup, setChatBlockPopup] = useState(false)
   const chatEndRef = useRef(null)
   const typingTimeoutRef = useRef(null)
+  const inputRef = useRef(null)
 
   // Messages List (Inbox) State
   const [chatPartners, setChatPartners] = useState([])
 
-  // Load Posts
+  // ---------- Functions ----------
   const fetchPosts = async () => {
     setLoadingPosts(true)
     try {
@@ -58,7 +59,6 @@ function UserDashboard({ user: initialUser, onLogout }) {
     } catch (err) { console.error(err) } finally { setLoadingPosts(false) }
   }
 
-  // Load Community Users
   const fetchCommunityUsers = async () => {
     setLoadingCommunity(true)
     try {
@@ -68,7 +68,6 @@ function UserDashboard({ user: initialUser, onLogout }) {
     } catch (err) { console.error(err) } finally { setLoadingCommunity(false) }
   }
 
-  // Load Messages for active chat
   const fetchMessages = async (partnerId) => {
     setLoadingMessages(true)
     try {
@@ -76,16 +75,18 @@ function UserDashboard({ user: initialUser, onLogout }) {
       if (error) throw error
       setMessages(data || [])
       
-      // চ্যাট ব্লকড কিনা চেক
-      if (data && data.length > 0 && data[0].is_chat_blocked) {
-        setIsChatBlocked(true)
-      } else {
-        setIsChatBlocked(false)
+      if (data && data.length > 0 && data[0].is_chat_blocked) setIsChatBlocked(true)
+      else setIsChatBlocked(false)
+
+      // অপরজনের পাঠানো আনরিড মেসেজগুলো 'Seen' করা
+      const unreadIds = data?.filter(m => m.sender_id === partnerId && !m.is_seen).map(m => m.id)
+      if (unreadIds && unreadIds.length > 0) {
+        await supabase.from('messages').update({ is_seen: true }).in('id', unreadIds)
       }
+
     } catch (err) { console.error(err) } finally { setLoadingMessages(false) }
   }
 
-  // Load Chat Partners (Inbox)
   const fetchChatPartners = async () => {
     try {
       const { data, error } = await supabase.from('messages').select('*').or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`).order('created_at', { ascending: false })
@@ -104,32 +105,59 @@ function UserDashboard({ user: initialUser, onLogout }) {
   useEffect(() => {
     fetchPosts(); fetchCommunityUsers(); fetchChatPartners()
 
-    const postChannel = supabase.channel('public:posts').on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => fetchPosts()).subscribe()
     const userChannel = supabase.channel(`user-status-${user.id}`).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${user.id}` }, (payload) => {
       const newStatus = payload.new.status
       if (newStatus === 'suspended' || newStatus === 'blocked' || newStatus === 'disabled') { alert('আপনার অ্যাকাউন্টে পরিবর্তন এসেছে। আবার লগইন করুন।'); onLogout() } 
-      else { setUser(payload.new) }
-    }).subscribe()
-    
-    const msgChannel = supabase.channel(`messages-${user.id}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-      if (activeChatUser && (payload.new.sender_id === activeChatUser.id || payload.new.receiver_id === activeChatUser.id)) {
-        setMessages(prev => [...prev, payload.new])
-        if (payload.new.is_chat_blocked) setIsChatBlocked(true)
-      }
-      fetchChatPartners()
+      else setUser(payload.new)
     }).subscribe()
 
-    // Typing Indicator Subscription
-    const typingChannel = supabase.channel('typing-status').on('postgres_changes', { event: '*', schema: 'public', table: 'typing_status' }, (payload) => {
-      if (activeChatUser && payload.new.sender_id === activeChatUser.id && payload.new.receiver_id === user.id) {
-        setIsOtherTyping(payload.new.is_typing)
-      }
-    }).subscribe()
+    return () => { supabase.removeChannel(userChannel) }
+  }, [user.id])
 
-    return () => { supabase.removeChannel(postChannel); supabase.removeChannel(userChannel); supabase.removeChannel(msgChannel); supabase.removeChannel(typingChannel) }
-  }, [user.id, activeChatUser])
+  // চ্যাট ওপেন থাকলে রিয়েল-টাইম লিসেনার
+  useEffect(() => {
+    if (!activeChatUser) return
 
-  useEffect(() => { if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' }) }, [messages, isOtherTyping])
+    // মেসেজ চ্যানেল
+    const msgChannel = supabase.channel(`chat-${user.id}-${activeChatUser.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+        const msg = payload.new
+        // যদি এই চ্যাটের মেসেজ হয়
+        if ((msg.sender_id === user.id && msg.receiver_id === activeChatUser.id) || (msg.sender_id === activeChatUser.id && msg.receiver_id === user.id)) {
+          setMessages(prev => [...prev, msg])
+          if (msg.is_chat_blocked) setIsChatBlocked(true)
+          
+          // যদি অপরজন পাঠায়, তবে সাথে সাথে seen করে দাও
+          if (msg.sender_id === activeChatUser.id) {
+             supabase.from('messages').update({ is_seen: true }).eq('id', msg.id).then()
+          }
+        }
+        fetchChatPartners()
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (payload) => {
+        // Seen স্ট্যাটাস আপডেট হলে
+        setMessages(prev => prev.map(m => m.id === payload.new.id ? payload.new : m))
+      })
+      .subscribe()
+
+    // টাইপিং চ্যানেল
+    const typingChannel = supabase.channel(`typing-${user.id}-${activeChatUser.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'typing_status' }, (payload) => {
+        if (payload.new.sender_id === activeChatUser.id && payload.new.receiver_id === user.id) {
+          setIsOtherTyping(payload.new.is_typing)
+        }
+      })
+      .subscribe()
+
+    return () => { 
+      supabase.removeChannel(msgChannel)
+      supabase.removeChannel(typingChannel)
+    }
+  }, [activeChatUser, user.id])
+
+  useEffect(() => { 
+    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' }) 
+  }, [messages, isOtherTyping])
 
   const handleCreatePost = async () => {
     if (!postText.trim() || isPosting) return;
@@ -142,12 +170,8 @@ function UserDashboard({ user: initialUser, onLogout }) {
   }
 
   const openChat = async (partner) => {
-    // চেক করা: পার্টনারের is_msg_blocked true কিনা
     const { data: partnerData } = await supabase.from('users').select('is_msg_blocked').eq('id', partner.id).single()
-    if (partnerData?.is_msg_blocked) {
-      setChatBlockPopup(true)
-      return
-    }
+    if (partnerData?.is_msg_blocked) { setChatBlockPopup(true); return }
 
     setActiveChatUser(partner)
     fetchMessages(partner.id)
@@ -158,26 +182,29 @@ function UserDashboard({ user: initialUser, onLogout }) {
     if (!newMessage.trim() || !activeChatUser || isChatBlocked) return
     
     const msgContent = newMessage.trim()
-    setNewMessage('')
+    setNewMessage('') // ফাঁকা করা
     
-    // Typing Status আপডেট করা (is_typing = false)
+    // ২ সেকেন্ড পর নিজের typing স্টেটাস বন্ধ করা
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     await supabase.from('typing_status').upsert({ sender_id: user.id, receiver_id: activeChatUser.id, is_typing: false }, { onConflict: 'sender_id,receiver_id' })
 
     try {
-      const { error } = await supabase.from('messages').insert([{ sender_id: user.id, receiver_id: activeChatUser.id, content: msgContent, is_chat_blocked: false }])
+      // ডেটাবেসে সেভ
+      const { data, error } = await supabase.from('messages').insert([{ sender_id: user.id, receiver_id: activeChatUser.id, content: msgContent, is_chat_blocked: false, is_seen: false }]).select()
       if (error) throw error
+      
+      // লোকাল স্টেটে যোগ করা (লাইভ আপডেট)
+      if (data) setMessages(prev => [...prev, data[0]])
+      fetchChatPartners()
     } catch (err) { alert('মেসেজ পাঠাতে সমস্যা: ' + err.message) }
   }
 
-  // Typing Indicator Handler
   const handleTyping = async (e) => {
     setNewMessage(e.target.value)
     if (!activeChatUser) return
 
-    // নিজের স্টেটাস ট্রু করা
     await supabase.from('typing_status').upsert({ sender_id: user.id, receiver_id: activeChatUser.id, is_typing: true, updated_at: new Date() }, { onConflict: 'sender_id,receiver_id' })
 
-    // ৩ সেকেন্ড পর অটো ফলস
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     typingTimeoutRef.current = setTimeout(async () => {
       await supabase.from('typing_status').upsert({ sender_id: user.id, receiver_id: activeChatUser.id, is_typing: false }, { onConflict: 'sender_id,receiver_id' })
@@ -185,12 +212,11 @@ function UserDashboard({ user: initialUser, onLogout }) {
   }
 
   // =====================================================
-  // চ্যাট UI রেন্ডার
+  // চ্যাট UI
   // =====================================================
   if (activeTab === 'chat' && activeChatUser) {
     return (
       <div style={styles.chatPage}>
-        {/* Chat Header */}
         <header style={styles.chatHeader}>
           <button style={styles.backBtn} onClick={() => setActiveTab('message')}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0a1f44" strokeWidth="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
@@ -198,35 +224,43 @@ function UserDashboard({ user: initialUser, onLogout }) {
           <img src={activeChatUser.profile_image_url} alt={activeChatUser.name} style={styles.chatAvatar} />
           <div>
             <p style={styles.chatName}>{activeChatUser.name}</p>
-            <p style={styles.chatStatus}>{isOtherTyping ? 'টাইপ করছে...' : 'অনলাইন'}</p>
+            <p style={styles.chatStatus}>{isOtherTyping ? 'টাইপ করছে...' : 'সক্রিয়'}</p>
           </div>
         </header>
 
-        {/* Chat Body */}
         <div style={styles.chatBody}>
-          {messages.map((msg) => {
-            const isMe = msg.sender_id === user.id
-            return (
-              <div key={msg.id} style={{ ...styles.msgRow, justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
-                <div style={{ 
-                  ...styles.msgBubble, 
-                  background: isMe ? 'linear-gradient(135deg, #1877F2, #0a58ca)' : '#e4e6eb',
-                  color: isMe ? '#ffffff' : '#111827',
-                  borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                  boxShadow: '0 3px 8px rgba(0,0,0,0.1)'
-                }}>
-                  <p style={styles.msgText}>{msg.content}</p>
-                  <span style={{ ...styles.msgTime, color: isMe ? 'rgba(255,255,255,0.7)' : '#8a92a2' }}>
-                    {new Date(msg.created_at).toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
+          {loadingMessages ? <p style={{ textAlign: 'center', color: '#5a6472' }}>লোড হচ্ছে...</p> : messages.length === 0 ? <p style={{ textAlign: 'center', color: '#5a6472', marginTop: '40px' }}>কোনো মেসেজ নেই।</p> : (
+            messages.map((msg, idx) => {
+              const isMe = msg.sender_id === user.id
+              const showAvatar = !isMe && (idx === 0 || messages[idx - 1].sender_id !== msg.sender_id)
+
+              return (
+                <div key={msg.id} style={{ ...styles.msgRow, justifyContent: isMe ? 'flex-end' : 'flex-start', marginBottom: (idx < messages.length - 1 && messages[idx+1].sender_id !== msg.sender_id) ? '16px' : '2px' }}>
+                  {!isMe && (
+                     <div style={{ width: '32px', marginRight: '8px' }}>
+                       {showAvatar && <img src={activeChatUser.profile_image_url} alt="Avatar" style={styles.msgAvatar} />}
+                     </div>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+                    <div style={{ 
+                      ...styles.msgBubble, 
+                      background: isMe ? '#0084ff' : '#e4e6eb', // ফেসবুক মেসেঞ্জার কালার
+                      color: isMe ? '#ffffff' : '#111827',
+                      borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px'
+                    }}>
+                      <p style={styles.msgText}>{msg.content}</p>
+                    </div>
+                    <span style={{ ...styles.msgTime, color: '#8a92a2' }}>
+                      {isMe ? (msg.is_seen ? 'Seen' : 'Sent') : new Date(msg.created_at).toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            )
-          })}
-          {/* Typing Indicator (3 Dots) */}
+              )
+            })
+          )}
           {isOtherTyping && (
-            <div style={{ ...styles.msgRow, justifyContent: 'flex-start' }}>
-               <div style={{ ...styles.msgBubble, background: '#e4e6eb', borderRadius: '18px 18px 18px 4px', display: 'flex', gap: '4px', padding: '12px 18px' }}>
+            <div style={{ display: 'flex', marginLeft: '40px', marginTop: '4px' }}>
+               <div style={{ ...styles.msgBubble, background: '#e4e6eb', borderRadius: '18px', padding: '10px 16px', display: 'flex', gap: '4px' }}>
                  <span style={styles.dot}></span><span style={{...styles.dot, animationDelay: '0.2s'}}></span><span style={{...styles.dot, animationDelay: '0.4s'}}></span>
                </div>
             </div>
@@ -234,15 +268,13 @@ function UserDashboard({ user: initialUser, onLogout }) {
           <div ref={chatEndRef} />
         </div>
 
-        {/* Chat Input */}
         <div style={styles.chatInputRow}>
           {isChatBlocked ? (
-            <div style={styles.chatBlockedBox}>
-              <p style={styles.chatBlockedText}>চ্যাট ব্লক করা হয়েছে। সাপোর্টে যোগাযোগ করুন।</p>
-            </div>
+            <div style={styles.chatBlockedBox}><p style={styles.chatBlockedText}>চ্যাট ব্লক করা হয়েছে। সাপোর্টে যোগাযোগ করুন।</p></div>
           ) : (
             <>
               <input 
+                ref={inputRef}
                 type="text" 
                 style={styles.chatInput} 
                 placeholder="মেসেজ লিখুন..." 
@@ -257,13 +289,12 @@ function UserDashboard({ user: initialUser, onLogout }) {
           )}
         </div>
 
-        {/* Blocked Popup */}
         {chatBlockPopup && (
           <div style={styles.popupOverlay}>
             <div style={styles.popupBox}>
               <div style={styles.popupIcon}>🚫</div>
-              <h3 style={styles.popupTitle}>আপনার মেসেজ ব্লক করা হয়েছে</h3>
-              <p style={styles.popupMessage}>আপনি এই ইউজারের সাথে মেসেজ করতে পারবেন না। সাপোর্ট টিমের সাথে যোগাযোগ করুন।</p>
+              <h3 style={styles.popupTitle}>মেসেজ ব্লকড</h3>
+              <p style={styles.popupMessage}>আপনি এই ইউজারের সাথে মেসেজ করতে পারবেন না। সাপোর্টে যোগাযোগ করুন।</p>
               <button style={styles.popupBtn} onClick={() => { setChatBlockPopup(false); setActiveTab('home'); }}>ঠিক আছে</button>
             </div>
           </div>
@@ -272,7 +303,6 @@ function UserDashboard({ user: initialUser, onLogout }) {
     )
   }
 
-  // Main Dashboard
   return (
     <div style={styles.appWrapper}>
       <header style={styles.topBar}>
@@ -347,6 +377,7 @@ function UserDashboard({ user: initialUser, onLogout }) {
   )
 }
 
+// স্টাইল
 const styles = {
   appWrapper: { minHeight: '100vh', width: '100%', background: '#f5f7fa', display: 'flex', flexDirection: 'column', overflowX: 'hidden' },
   topBar: { position: 'sticky', top: 0, zIndex: 50, background: 'linear-gradient(135deg, #0a1f44 0%, #16346b 100%)', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
@@ -390,25 +421,26 @@ const styles = {
   chatListName: { fontSize: '16px', fontWeight: 700, color: '#0a1f44', margin: '0 0 2px' },
   chatListText: { fontSize: '12px', color: '#5a6472', margin: 0 },
   
-  // Chat Page
-  chatPage: { display: 'flex', flexDirection: 'column', height: '100vh', background: '#e4e6eb' },
-  chatHeader: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)', zIndex: 10 },
+  // Chat Page (Messenger Style)
+  chatPage: { display: 'flex', flexDirection: 'column', height: '100vh', background: '#ffffff' },
+  chatHeader: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)', zIndex: 10, borderBottom: '1px solid #e2e6ee' },
   backBtn: { background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' },
   chatAvatar: { width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' },
   chatName: { fontSize: '16px', fontWeight: 700, color: '#0a1f44', margin: 0 },
   chatStatus: { fontSize: '11px', color: '#1e9d5a', margin: 0 },
-  chatBody: { flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' },
-  msgRow: { display: 'flex', width: '100%' },
+  chatBody: { flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', background: '#f0f2f5' },
+  msgRow: { display: 'flex', alignItems: 'flex-end', marginTop: '2px' },
+  msgAvatar: { width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', marginBottom: '16px' },
   msgBubble: { maxWidth: '75%', padding: '10px 14px' },
   msgText: { fontSize: '14.5px', margin: 0, lineHeight: 1.5, fontFamily: "'Hind Siliguri', sans-serif" },
-  msgTime: { fontSize: '10px', display: 'block', textAlign: 'right', marginTop: '4px' },
-  chatInputRow: { display: 'flex', gap: '10px', padding: '12px', background: '#ffffff', boxShadow: '0 -2px 10px rgba(0,0,0,0.05)' },
-  chatInput: { flex: 1, padding: '12px 16px', borderRadius: '25px', border: '1.5px solid #e2e6ee', background: '#f5f7fa', fontSize: '15px', outline: 'none' },
+  msgTime: { fontSize: '10px', marginTop: '2px', marginLeft: '4px', marginRight: '4px' },
+  chatInputRow: { display: 'flex', gap: '10px', padding: '12px', background: '#ffffff', borderTop: '1px solid #e2e6ee' },
+  chatInput: { flex: 1, padding: '12px 16px', borderRadius: '25px', border: 'none', background: '#f0f2f5', fontSize: '15px', outline: 'none' },
   sendBtn: { width: '46px', height: '46px', borderRadius: '50%', background: '#1877F2', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   chatBlockedBox: { flex: 1, padding: '12px', background: '#ffebee', borderRadius: '12px', border: '1px solid #d93636' },
   chatBlockedText: { color: '#d93636', margin: 0, fontWeight: 600, textAlign: 'center', fontSize: '14px' },
-  
-  // Typing Dots Animation (CSS in JS)
+
+  // Typing Dots
   dot: { width: '8px', height: '8px', borderRadius: '50%', background: '#8a92a2', display: 'inline-block', animation: 'typing 1.4s infinite ease-in-out both' },
 
   // Modal
