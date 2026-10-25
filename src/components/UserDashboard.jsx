@@ -7,27 +7,25 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // কালার থিমের লিস্ট
 const colorThemes = [
-  { id: 'white', bg: '#ffffff', text: '#111827' },
-  { id: 'blue', bg: '#1877F2', text: '#ffffff' },
-  { id: 'darkblue', bg: '#0a1f44', text: '#ffffff' },
-  { id: 'red', bg: '#d93636', text: '#ffffff' },
-  { id: 'green', bg: '#1e9d5a', text: '#ffffff' },
-  { id: 'purple', bg: '#8b5cf6', text: '#ffffff' },
-  { id: 'orange', bg: '#f97316', text: '#ffffff' },
-  { id: 'pink', bg: '#ec4899', text: '#ffffff' },
-  { id: 'black', bg: '#111827', text: '#ffffff' },
+  { id: 'white', bg: '#ffffff', text: '#111827', icon: '#f0f2f5' },
+  { id: 'blue', bg: '#1877F2', text: '#ffffff', icon: '#1877F2' },
+  { id: 'darkblue', bg: '#0a1f44', text: '#ffffff', icon: '#0a1f44' },
+  { id: 'red', bg: '#d93636', text: '#ffffff', icon: '#d93636' },
+  { id: 'green', bg: '#1e9d5a', text: '#ffffff', icon: '#1e9d5a' },
+  { id: 'purple', bg: '#8b5cf6', text: '#ffffff', icon: '#8b5cf6' },
+  { id: 'orange', bg: '#f97316', text: '#ffffff', icon: '#f97316' },
+  { id: 'pink', bg: '#ec4899', text: '#ffffff', icon: '#ec4899' },
+  { id: 'black', bg: '#111827', text: '#ffffff', icon: '#111827' },
 ]
 
 function UserDashboard({ user: initialUser, onLogout }) {
   const [user, setUser] = useState(initialUser)
   const [activeTab, setActiveTab] = useState('home')
   
-  // Create Post Modal State
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false)
   const [postText, setPostText] = useState('')
-  const [selectedTheme, setSelectedTheme] = useState(colorThemes[0]) // ডিফল্ট সাদা
+  const [selectedTheme, setSelectedTheme] = useState(colorThemes[0])
 
-  // ডেমো পোস্ট (পরে ডেটাবেস থেকে আসবে)
   const [posts, setPosts] = useState([
     {
       id: 1,
@@ -71,7 +69,6 @@ function UserDashboard({ user: initialUser, onLogout }) {
 
   const handleCreatePost = () => {
     if (!postText.trim()) return;
-    
     const newPost = {
       id: Date.now(),
       author: user.name,
@@ -80,7 +77,6 @@ function UserDashboard({ user: initialUser, onLogout }) {
       content: postText,
       theme: selectedTheme
     }
-
     setPosts([newPost, ...posts])
     setPostText('')
     setSelectedTheme(colorThemes[0])
@@ -168,6 +164,8 @@ function UserDashboard({ user: initialUser, onLogout }) {
             {/* পোস্ট লিস্ট */}
             {posts.map((post) => (
               <div key={post.id} style={{ ...styles.feedCard, backgroundColor: post.theme.bg }}>
+                
+                {/* কার্ডের ভেতরের হেডার */}
                 <div style={styles.feedHeader}>
                   <img src={post.authorImage} alt="User" style={styles.feedAvatar} />
                   <div>
@@ -176,9 +174,10 @@ function UserDashboard({ user: initialUser, onLogout }) {
                   </div>
                 </div>
                 
+                {/* কার্ডের টেক্সট */}
                 <p style={{ ...styles.feedContent, color: post.theme.text }}>{post.content}</p>
                 
-                {/* পোস্টের নিচের অ্যাকশন বার */}
+                {/* কার্ডের নিচের অ্যাকশন বার */}
                 <div style={{ ...styles.postActionBar, borderTopColor: post.theme.id === 'white' ? '#e5e7eb' : 'rgba(255,255,255,0.2)' }}>
                   <button style={{ ...styles.actionBtn, color: post.theme.id === 'white' ? '#111827' : '#ffffff' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
@@ -241,16 +240,7 @@ function UserDashboard({ user: initialUser, onLogout }) {
               </div>
             </div>
 
-            {/* টেক্সট এরিয়া */}
-            <textarea
-              style={{ ...styles.modalTextArea, backgroundColor: selectedTheme.bg, color: selectedTheme.text }}
-              placeholder="What's on your mind?"
-              value={postText}
-              onChange={(e) => setPostText(e.target.value)}
-              autoFocus
-            />
-
-            {/* কালার প্যালেট */}
+            {/* কালার প্যালেট (এখন উপরে, ফেসবুকের মতো) */}
             <div style={styles.colorPalette}>
               {colorThemes.map((theme) => (
                 <button
@@ -265,6 +255,15 @@ function UserDashboard({ user: initialUser, onLogout }) {
                 />
               ))}
             </div>
+
+            {/* টেক্সট এরিয়া (শুধু এই অংশে কালার হবে) */}
+            <textarea
+              style={{ ...styles.modalTextArea, backgroundColor: selectedTheme.bg, color: selectedTheme.text }}
+              placeholder="What's on your mind?"
+              value={postText}
+              onChange={(e) => setPostText(e.target.value)}
+              autoFocus
+            />
 
           </div>
         </div>
@@ -297,17 +296,17 @@ const styles = {
   avatar: { width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #1877F2', boxShadow: '0 4px 10px rgba(24, 119, 242, 0.2)' },
   fakeInput: { flex: 1, padding: '14px', borderRadius: '25px', border: '1.5px solid #e2e6ee', background: '#f8fafc', fontSize: '15px', fontFamily: "'Hind Siliguri', sans-serif", color: '#6b7280', boxShadow: 'inset 0 2px 6px rgba(0, 0, 0, 0.04)' },
 
-  // ফিড কার্ড
-  feedCard: { borderRadius: '20px', padding: '18px', boxShadow: '0 6px 20px rgba(0, 0, 0, 0.06)', transition: 'background-color 0.3s ease' },
-  feedHeader: { display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' },
-  feedAvatar: { width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 3px 8px rgba(0,0,0,0.12)' },
-  feedAuthor: { fontSize: '15px', fontWeight: 800, margin: '0 0 2px', fontFamily: "'Hind Siliguri', sans-serif" },
-  feedTime: { fontSize: '11px', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" },
-  feedContent: { fontSize: '15px', margin: '0 0 16px', lineHeight: 1.7, fontFamily: "'Hind Siliguri', sans-serif" },
+  // ফিড কার্ড (বড় ও চারকোনা)
+  feedCard: { borderRadius: '24px', padding: '22px', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.1)', minHeight: '180px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', transition: 'background-color 0.3s ease' },
+  feedHeader: { display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '16px' },
+  feedAvatar: { width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 3px 8px rgba(0,0,0,0.15)' },
+  feedAuthor: { fontSize: '16px', fontWeight: 800, margin: '0 0 4px', fontFamily: "'Hind Siliguri', sans-serif" },
+  feedTime: { fontSize: '12px', margin: 0, fontFamily: "'Hind Siliguri', sans-serif" },
+  feedContent: { fontSize: '18px', margin: '0 0 20px', lineHeight: 1.6, fontFamily: "'Hind Siliguri', sans-serif", flexGrow: 1 },
   
   // পোস্ট অ্যাকশন বার
-  postActionBar: { display: 'flex', justifyContent: 'space-between', borderTopWidth: '1px', borderTopStyle: 'solid', paddingTop: '12px' },
-  actionBtn: { display: 'flex', alignItems: 'center', gap: '6px', background: 'transparent', border: 'none', fontSize: '13px', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif", cursor: 'pointer' },
+  postActionBar: { display: 'flex', justifyContent: 'space-between', borderTopWidth: '1px', borderTopStyle: 'solid', paddingTop: '14px' },
+  actionBtn: { display: 'flex', alignItems: 'center', gap: '6px', background: 'transparent', border: 'none', fontSize: '14px', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif", cursor: 'pointer' },
 
   emptyContent: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', borderRadius: '20px', border: '2px dashed #9ca3af', minHeight: '300px', boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.03)' },
   placeholderText: { fontSize: '20px', color: '#1877F2', fontWeight: 800, fontFamily: "'Hind Siliguri', sans-serif" },
@@ -327,10 +326,12 @@ const styles = {
   modalUserName: { fontSize: '15px', fontWeight: 700, color: '#111827', margin: '0 0 4px', fontFamily: "'Hind Siliguri', sans-serif" },
   privacyBadge: { display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#f0f2f5', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: '#111827', fontFamily: "'Hind Siliguri', sans-serif" },
   
-  modalTextArea: { flex: 1, border: 'none', outline: 'none', fontSize: '20px', fontFamily: "'Hind Siliguri', sans-serif", resize: 'none', padding: '16px', borderRadius: '16px', transition: 'all 0.3s ease' },
+  // কালার প্যালেট (উপরে আনা হয়েছে)
+  colorPalette: { display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #e5e7eb' },
+  colorCircle: { width: '40px', height: '40px', borderRadius: '50%', cursor: 'pointer', flexShrink: 0, transition: 'transform 0.2s ease', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' },
   
-  colorPalette: { display: 'flex', gap: '12px', overflowX: 'auto', padding: '12px 0', borderTop: '1px solid #e5e7eb', marginTop: 'auto' },
-  colorCircle: { width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', flexShrink: 0, transition: 'transform 0.2s ease' }
+  // টেক্সট এরিয়া (বড় ও শুধু এখানে কালার)
+  modalTextArea: { flex: 1, border: 'none', outline: 'none', fontSize: '20px', fontFamily: "'Hind Siliguri', sans-serif", resize: 'none', padding: '20px', borderRadius: '16px', transition: 'all 0.3s ease', boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.05)' },
 }
 
 export default UserDashboard
